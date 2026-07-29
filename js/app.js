@@ -138,7 +138,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             qubitCountBadge.textContent = `${numSelected} Cidades | Simulated Annealing (Metaheurística)`;
         } else if (mode === 'log') {
             const bitsPerStep = Math.ceil(Math.log2(numSelected));
-            const qubitsFull = numSelected * bitsPerStep;
             const qubitsFixed = (numSelected - 1) * bitsPerStep;
             qubitCountBadge.textContent = `${numSelected} Cidades | ${qubitsFixed} Qubits Log(N)`;
         } else {
@@ -221,12 +220,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 5. Draw QUBO Matrix Heatmap Canvas
+    // 5. Draw QUBO Matrix Heatmap Canvas Safely
     function drawQUBOHeatmap(qaoaEngine) {
         const canvas = document.getElementById('quboCanvas');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const Q = qaoaEngine.Q;
-        const n = qaoaEngine.numQubits || Q.length;
+        const Q = qaoaEngine ? qaoaEngine.Q : null;
+        if (!Q || !Q.length) return;
+
+        const n = Q.length; // Always match exact matrix dimension
 
         const cellSize = Math.min(30, Math.floor(260 / n));
         canvas.width = n * cellSize;
@@ -234,14 +236,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let maxVal = 0;
         for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
+            if (!Q[i]) continue;
+            for (let j = 0; j < Q[i].length; j++) {
                 if (Math.abs(Q[i][j]) > maxVal) maxVal = Math.abs(Q[i][j]);
             }
         }
         if (maxVal === 0) maxVal = 1;
 
         for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
+            if (!Q[i]) continue;
+            for (let j = 0; j < Q[i].length; j++) {
                 const val = Q[i][j];
                 const norm = Math.abs(val) / maxVal;
                 
@@ -261,6 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 6. Draw Circuit / Metaheuristic Visualizer
     function renderCircuitDiagram(numQubits, layers, mode) {
         const container = document.getElementById('circuitContainer');
+        if (!container) return;
         let html = '';
         
         if (mode === 'sa') {
