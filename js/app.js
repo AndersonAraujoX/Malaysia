@@ -3,10 +3,10 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Global Application State
+    // Global Application State (All 20 cities selected by default)
     const state = {
         distMatrixFull: buildFullDistanceMatrix(),
-        selectedCityIds: new Set([0, 1, 2, 3, 4, 5, 6]), // All 7 cities
+        selectedCityIds: new Set(Array.from({ length: 20 }, (_, i) => i)),
         map: null,
         markersMap: new Map(),
         classicalPolyline: null,
@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statClassicalDist = document.getElementById('statClassicalDist');
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
+    const btnSelectMain7 = document.getElementById('btnSelectMain7');
+    const btnSelectAll20 = document.getElementById('btnSelectAll20');
 
     // 1. Initialize Leaflet Dark Map
     function initMap() {
@@ -58,15 +60,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="map-marker-pin ${isSelected ? 'active' : 'disabled'}" style="
                     background: ${isSelected ? 'linear-gradient(135deg, #00f2fe, #9d4edd)' : '#334155'};
                     color: #fff;
-                    width: 32px;
-                    height: 32px;
+                    width: 30px;
+                    height: 30px;
                     border-radius: 50%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 16px;
+                    font-size: 14px;
                     border: 2px solid ${isSelected ? '#ffffff' : '#64748b'};
-                    box-shadow: ${isSelected ? '0 0 14px #00f2fe' : 'none'};
+                    box-shadow: ${isSelected ? '0 0 12px #00f2fe' : 'none'};
                 ">
                     ${city.icon}
                 </div>
@@ -75,8 +77,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const customIcon = L.divIcon({
                 html: iconHtml,
                 className: 'custom-div-icon',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
             });
 
             const marker = L.marker([city.lat, city.lon], { icon: customIcon }).addTo(state.map);
@@ -147,6 +149,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     encodingModeEl.addEventListener('change', updateQubitCount);
+
+    if (btnSelectMain7) {
+        btnSelectMain7.addEventListener('click', () => {
+            state.selectedCityIds = new Set([0, 1, 2, 3, 4, 5, 6]);
+            renderCityList();
+            renderCityMarkers();
+            updateQubitCount();
+        });
+    }
+
+    if (btnSelectAll20) {
+        btnSelectAll20.addEventListener('click', () => {
+            state.selectedCityIds = new Set(Array.from({ length: 20 }, (_, i) => i));
+            renderCityList();
+            renderCityMarkers();
+            updateQubitCount();
+        });
+    }
 
     // 3. Setup Sliders & Tabs
     layersSlider.addEventListener('input', (e) => {
@@ -228,7 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const Q = qaoaEngine ? qaoaEngine.Q : null;
         if (!Q || !Q.length) return;
 
-        const n = Q.length; // Always match exact matrix dimension
+        const n = Q.length;
 
         const cellSize = Math.min(30, Math.floor(260 / n));
         canvas.width = n * cellSize;
@@ -343,7 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const maxIter = parseInt(maxIterSlider.value, 10);
         const encodingMode = encodingModeEl.value;
 
-        // 1. Classical Exact Solution
+        // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 

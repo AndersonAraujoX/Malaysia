@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caixeiro Viajante - QAOA & Simulated Annealing (Malásia)</title>
+    <title>Caixeiro Viajante - 20 Cidades da Malásia (QAOA & Simulated Annealing)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,18 +27,18 @@
     <!-- Header / Navbar -->
     <header class="navbar">
         <div class="brand">
-            <div class="brand-logo">🔥</div>
+            <div class="brand-logo">🇲🇾</div>
             <div>
-                <h1 class="brand-title">TSP Malásia - QAOA & Simulated Annealing</h1>
-                <p class="brand-subtitle">Algoritmos Quânticos e Metaheurística de Têmpera Simulada (Simulated Annealing)</p>
+                <h1 class="brand-title">TSP Malásia (20 Cidades)</h1>
+                <p class="brand-subtitle">Otimização no Problema do Caixeiro Viajante com Simulated Annealing e QAOA</p>
             </div>
         </div>
         <div class="nav-badges">
             <div class="badge badge-quantum">
-                <span>⚡</span> <span id="qubitCountBadge">7 Cidades | Simulated Annealing / QAOA</span>
+                <span>⚡</span> <span id="qubitCountBadge">20 Cidades | Simulated Annealing / QAOA</span>
             </div>
             <div class="badge badge-malaysia">
-                <span>🇲🇾</span> <span>7 Cidades da Malásia</span>
+                <span>🇲🇾</span> <span>20 Cidades da Malásia</span>
             </div>
         </div>
     </header>
@@ -52,8 +52,15 @@
             <!-- City Selection Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h2 class="card-title">📍 Cidades da Malásia</h2>
+                    <h2 class="card-title">📍 Cidades da Malásia (20)</h2>
                 </div>
+
+                <!-- Quick Selection Buttons -->
+                <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <button id="btnSelectMain7" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">7 Principais</button>
+                    <button id="btnSelectAll20" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(157, 78, 221, 0.15); color: #9d4edd; border: 1px solid rgba(157, 78, 221, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">Todas (20)</button>
+                </div>
+
                 <div class="city-list" id="cityList">
                     <!-- Cities injected by js/app.js -->
                 </div>
@@ -71,8 +78,8 @@
                         </div>
                         <select id="encodingMode" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.4); color: #00f2fe; border: 1px solid rgba(0,242,254,0.3); font-family: var(--font-heading); font-weight: 600;">
                             <option value="sa">🔥 Simulated Annealing (Têmpera Simulada)</option>
-                            <option value="log">⚛️ QAOA Logarítmico Compacto (N log N) ➔ 18 Qubits</option>
-                            <option value="onehot">⚛️ QAOA Quadrático One-Hot (N²) ➔ 36 Qubits</option>
+                            <option value="log">⚛️ QAOA Logarítmico Compacto (N log N)</option>
+                            <option value="onehot">⚛️ QAOA Quadrático One-Hot (N²)</option>
                         </select>
                     </div>
                     <div>
