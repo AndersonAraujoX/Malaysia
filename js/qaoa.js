@@ -1,16 +1,13 @@
 /**
  * QAOA & Simulated Annealing Quantum/Metaheuristic Engine (JavaScript)
- * Supports:
- *   1. Simulated Annealing (SA): Metropolis-Hastings 2-opt cooling solver
- *   2. QAOA Compact Logarithmic Encoding: N * ceil(log2 N) = 21/18 qubits
- *   3. QAOA Standard One-Hot Encoding: (N-1)^2 qubits (36 qubits)
+ * Optimized for High-Speed Execution & Instant Response
  */
 
 // -----------------------------------------------------------------------------
-// 1. Simulated Annealing Engine (SA)
+// 1. Simulated Annealing Engine (SA - Instant High Speed)
 // -----------------------------------------------------------------------------
 class JSSimulatedAnnealingEngine {
-    constructor(selectedCities, distMatrixFull, tInitial = 1000.0, alpha = 0.992) {
+    constructor(selectedCities, distMatrixFull, tInitial = 1000.0, alpha = 0.995) {
         this.selectedCities = selectedCities;
         this.N = selectedCities.length;
         this.tInitial = tInitial;
@@ -25,7 +22,6 @@ class JSSimulatedAnnealingEngine {
             }
         }
         
-        // Dummy Q matrix for QUBO Heatmap canvas representation
         this.numQubits = (this.N - 1) * (this.N - 1);
         let maxD = 0;
         for (let i = 0; i < this.N; i++) {
@@ -51,11 +47,9 @@ class JSSimulatedAnnealingEngine {
 
     getNeighbor2Opt(tour) {
         const newTour = tour.slice();
-        // Swap 2 edges
         const i = Math.floor(Math.random() * (this.N - 2)) + 1;
         const j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
         
-        // Reverse sub-array
         let left = i, right = j;
         while (left < right) {
             const tmp = newTour[left];
@@ -68,7 +62,6 @@ class JSSimulatedAnnealingEngine {
     }
 
     async runQAOA(layers = 1, maxIter = 1000, onProgress = null) {
-        // Initial tour
         let currentTour = Array.from({ length: this.N }, (_, i) => i);
         let currentCost = this.calculateTourDistance(currentTour);
 
@@ -77,13 +70,13 @@ class JSSimulatedAnnealingEngine {
 
         let T = this.tInitial;
         const history = [];
+        const updateInterval = Math.max(1, Math.floor(maxIter / 30));
 
         for (let step = 1; step <= maxIter; step++) {
             const neighborTour = this.getNeighbor2Opt(currentTour);
             const neighborCost = this.calculateTourDistance(neighborTour);
             const deltaE = neighborCost - currentCost;
 
-            // Metropolis Criterion
             if (deltaE < 0 || Math.random() < Math.exp(-deltaE / T)) {
                 currentTour = neighborTour;
                 currentCost = neighborCost;
@@ -95,13 +88,11 @@ class JSSimulatedAnnealingEngine {
             }
 
             history.push(currentCost);
-
-            // Cooling schedule
             T *= this.alpha;
 
-            if (onProgress && step % 10 === 0) {
+            // Streamlined UI progress update without async delays
+            if (onProgress && step % updateInterval === 0) {
                 onProgress(step, currentCost);
-                await new Promise(res => setTimeout(res, 2));
             }
 
             if (T < 1e-4) break;
