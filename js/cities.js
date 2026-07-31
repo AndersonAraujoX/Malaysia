@@ -239,12 +239,11 @@ function buildFullDistanceMatrix() {
 }
 
 /**
- * Exact Classical TSP Solver using Brute-Force / 2-Opt for selected city indices
+ * Classical Benchmark Solver (Exact Brute-Force for N<=8, 2-Opt Local Search for N>8)
  */
 function solveClassicalTSP(selectedCities, distMatrixFull) {
     const n = selectedCities.length;
     
-    // For <= 8 cities, use exact brute-force search
     if (n <= 8) {
         const indices = Array.from({ length: n }, (_, i) => i);
         const otherIndices = indices.slice(1);
@@ -288,7 +287,6 @@ function solveClassicalTSP(selectedCities, distMatrixFull) {
         };
     }
 
-    // For > 8 cities (e.g. 20 cities), use 2-Opt local search to find optimal tour instantly
     let bestTour = Array.from({ length: n }, (_, i) => i);
     let distSub = Array.from({ length: n }, () => new Float64Array(n));
     for (let i = 0; i < n; i++) {

@@ -1,5 +1,5 @@
 /**
- * Main Web Application Controller & Leaflet / Visualizations Integration
+ * Main Web Application Controller for Simulated Annealing TSP
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10,18 +10,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         map: null,
         markersMap: new Map(),
         classicalPolyline: null,
-        qaoaPolyline: null,
+        saPolyline: null,
         energyChart: null,
-        stateHistogramChart: null,
-        lastQaoaResult: null,
+        lastSaResult: null,
         lastClassicalResult: null
     };
 
     // DOM Element References
     const cityListEl = document.getElementById('cityList');
-    const encodingModeEl = document.getElementById('encodingMode');
-    const layersSlider = document.getElementById('qaoaLayers');
-    const layersValEl = document.getElementById('layersVal');
+    const tInitialSlider = document.getElementById('tInitial');
+    const tempValEl = document.getElementById('tempVal');
+    const coolingAlphaSlider = document.getElementById('coolingAlpha');
+    const alphaValEl = document.getElementById('alphaVal');
     const maxIterSlider = document.getElementById('maxIter');
     const maxIterValEl = document.getElementById('maxIterVal');
     const runBtn = document.getElementById('runBtn');
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSelected = state.selectedCityIds.has(city.id);
             const iconHtml = `
                 <div class="map-marker-pin ${isSelected ? 'active' : 'disabled'}" style="
-                    background: ${isSelected ? 'linear-gradient(135deg, #00f2fe, #9d4edd)' : '#334155'};
+                    background: ${isSelected ? 'linear-gradient(135deg, #00f2fe, #f59e0b)' : '#334155'};
                     color: #fff;
                     width: 30px;
                     height: 30px;
@@ -134,21 +134,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateQubitCount() {
         const numSelected = state.selectedCityIds.size;
-        const mode = encodingModeEl.value;
-        
-        if (mode === 'sa') {
-            qubitCountBadge.textContent = `${numSelected} Cidades | Simulated Annealing (Metaheurística)`;
-        } else if (mode === 'log') {
-            const bitsPerStep = Math.ceil(Math.log2(numSelected));
-            const qubitsFixed = (numSelected - 1) * bitsPerStep;
-            qubitCountBadge.textContent = `${numSelected} Cidades | ${qubitsFixed} Qubits Log(N)`;
-        } else {
-            const numQubits = (numSelected - 1) * (numSelected - 1);
-            qubitCountBadge.textContent = `${numSelected} Cidades | ${numQubits} Qubits One-Hot`;
-        }
+        qubitCountBadge.textContent = `${numSelected} Cidades | Simulated Annealing`;
     }
-
-    encodingModeEl.addEventListener('change', updateQubitCount);
 
     if (btnSelectMain7) {
         btnSelectMain7.addEventListener('click', () => {
@@ -169,13 +156,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 3. Setup Sliders & Tabs
-    layersSlider.addEventListener('input', (e) => {
-        layersValEl.textContent = e.target.value;
-    });
+    if (tInitialSlider) {
+        tInitialSlider.addEventListener('input', (e) => {
+            tempValEl.textContent = `${e.target.value} K`;
+        });
+    }
 
-    maxIterSlider.addEventListener('input', (e) => {
-        maxIterValEl.textContent = e.target.value;
-    });
+    if (coolingAlphaSlider) {
+        coolingAlphaSlider.addEventListener('input', (e) => {
+            alphaValEl.textContent = e.target.value;
+        });
+    }
+
+    if (maxIterSlider) {
+        maxIterSlider.addEventListener('input', (e) => {
+            maxIterValEl.textContent = e.target.value;
+        });
+    }
 
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -187,7 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // 4. Initialize Chart.js Instances
+    // 4. Initialize Chart.js Instance
     function initCharts() {
         const energyCtx = document.getElementById('energyChart').getContext('2d');
         state.energyChart = new Chart(energyCtx, {
@@ -195,14 +192,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Energia / Custo <E>',
+                    label: 'Distância do Tour (km)',
                     data: [],
                     borderColor: '#00f2fe',
                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
                     fill: true,
-                    tension: 0.3,
+                    tension: 0.2,
                     borderWidth: 2,
-                    pointRadius: 2
+                    pointRadius: 1.5
                 }]
             },
             options: {
@@ -215,37 +212,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         });
-
-        const stateCtx = document.getElementById('stateHistogramChart').getContext('2d');
-        state.stateHistogramChart = new Chart(stateCtx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Probabilidade de Medição |c_s|^2 (%)',
-                    data: [],
-                    backgroundColor: [],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#94a3b8' } } },
-                scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Fira Code' } } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' }, max: 100 }
-                }
-            }
-        });
     }
 
-    // 5. Draw QUBO Matrix Heatmap Canvas Safely
-    function drawQUBOHeatmap(qaoaEngine) {
+    // 5. Draw Distance Matrix Heatmap Canvas
+    function drawQUBOHeatmap(saEngine) {
         const canvas = document.getElementById('quboCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const Q = qaoaEngine ? qaoaEngine.Q : null;
+        const Q = saEngine ? saEngine.Q : null;
         if (!Q || !Q.length) return;
 
         const n = Q.length;
@@ -271,8 +245,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (val > 0) {
                     ctx.fillStyle = `rgba(0, 242, 254, ${Math.min(1.0, norm + 0.15)})`;
-                } else if (val < 0) {
-                    ctx.fillStyle = `rgba(247, 37, 133, ${Math.min(1.0, norm + 0.15)})`;
                 } else {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
                 }
@@ -282,40 +254,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 6. Draw Circuit / Metaheuristic Visualizer
-    function renderCircuitDiagram(numQubits, layers, mode) {
-        const container = document.getElementById('circuitContainer');
-        if (!container) return;
-        let html = '';
-        
-        if (mode === 'sa') {
-            html += `<div style="color: #00f2fe; font-weight: bold; margin-bottom: 8px;">🔥 Têmpera Simulada (Simulated Annealing):</div>`;
-            html += `<div class="qubit-line"><span class="gate gate-h">T_0 = 1000K</span> ─── <span class="gate gate-uc">Metropolis 2-Opt</span> ─── <span class="gate gate-ub">Cooling α=0.992</span> ─── <span class="gate gate-m">Best Tour</span></div>`;
-            container.innerHTML = html;
-            return;
-        }
-
-        for (let q = 0; q < Math.min(6, numQubits); q++) {
-            html += `<div class="qubit-line">`;
-            html += `<span style="width: 50px; color: #00f2fe;">|q_${q}⟩:</span>`;
-            html += `<span class="gate gate-h">H</span> ─── `;
-            for (let p = 1; p <= layers; p++) {
-                html += `<span class="gate gate-uc">U(C, γ_${p})</span> ─── `;
-                html += `<span class="gate gate-ub">U(B, β_${p})</span> ─── `;
-            }
-            html += `<span class="gate gate-m">M</span>`;
-            html += `</div>`;
-        }
-        if (numQubits > 6) {
-            html += `<div style="color: #64748b; margin-top: 6px;">... + ${numQubits - 6} linhas de qubits adicionais</div>`;
-        }
-        container.innerHTML = html;
-    }
-
-    // 7. Update Map Polylines
-    function drawRoutes(classicalResult, qaoaBestSample, selectedCities) {
+    // 6. Update Map Polylines
+    function drawRoutes(classicalResult, saBestSample, selectedCities) {
         if (state.classicalPolyline) state.map.removeLayer(state.classicalPolyline);
-        if (state.qaoaPolyline) state.map.removeLayer(state.qaoaPolyline);
+        if (state.saPolyline) state.map.removeLayer(state.saPolyline);
 
         if (classicalResult && classicalResult.tourIndices) {
             const classLatLons = classicalResult.tourIndices.map(idx => {
@@ -334,103 +276,89 @@ document.addEventListener('DOMContentLoaded', async () => {
             statClassicalDist.textContent = `${classicalResult.totalDistance.toFixed(1)} km`;
         }
 
-        if (qaoaBestSample && qaoaBestSample.isValid && qaoaBestSample.tourIndices) {
-            const qaoaLatLons = qaoaBestSample.tourIndices.map(idx => {
+        if (saBestSample && saBestSample.isValid && saBestSample.tourIndices) {
+            const saLatLons = saBestSample.tourIndices.map(idx => {
                 const c = selectedCities[idx];
                 return [c.lat, c.lon];
             });
-            qaoaLatLons.push(qaoaLatLons[0]);
+            saLatLons.push(saLatLons[0]);
 
-            state.qaoaPolyline = L.polyline(qaoaLatLons, {
+            state.saPolyline = L.polyline(saLatLons, {
                 color: '#00f2fe',
                 weight: 5,
                 opacity: 0.95
             }).addTo(state.map);
 
-            statQuantumDist.textContent = `${qaoaBestSample.totalDistance.toFixed(1)} km`;
+            statQuantumDist.textContent = `${saBestSample.totalDistance.toFixed(1)} km`;
         } else {
             statQuantumDist.textContent = "Sem rota válida";
         }
     }
 
-    // 8. Execute Solver Runner
+    // 7. Execute Simulated Annealing Solver Runner
     async function runOptimization() {
         runBtn.disabled = true;
-        runBtn.innerHTML = `<span>⏳ Otimizando...</span>`;
+        runBtn.innerHTML = `<span>⏳ Resfriando Simulated Annealing...</span>`;
 
         const selectedCities = MALAYSIA_CITIES.filter(c => state.selectedCityIds.has(c.id));
-        const layers = parseInt(layersSlider.value, 10);
+        const tInitial = parseFloat(tInitialSlider.value);
+        const alpha = parseFloat(coolingAlphaSlider.value);
         const maxIter = parseInt(maxIterSlider.value, 10);
-        const encodingMode = encodingModeEl.value;
 
-        // 1. Classical Solution
+        // 1. Classical Solution Benchmark
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
-        // 2. Initialize Selected Engine
-        let solverEngine;
-        if (encodingMode === 'sa') {
-            solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, 1000.0, 0.992);
-        } else if (encodingMode === 'log') {
-            solverEngine = new JSLogQaoaEngine(selectedCities, state.distMatrixFull, true);
-        } else {
-            solverEngine = new JSQaoaEngine(selectedCities, state.distMatrixFull);
-        }
+        // 2. Initialize Simulated Annealing Engine
+        const saEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInitial, alpha);
 
-        // 3. Render QUBO Heatmap & Circuit Structure
-        drawQUBOHeatmap(solverEngine);
-        renderCircuitDiagram(solverEngine.numQubits || 9, layers, encodingMode);
+        // 3. Render Distance Matrix Heatmap
+        drawQUBOHeatmap(saEngine);
 
         state.energyChart.data.labels = [];
         state.energyChart.data.datasets[0].data = [];
         state.energyChart.update();
 
-        // 4. Run Simulation
-        const solverRes = await solverEngine.runQAOA(layers, maxIter, (step, currentEnergy) => {
+        // 4. Run Simulated Annealing Simulation
+        const saRes = await saEngine.runAnnealing(maxIter, (step, currentCost, temp) => {
             state.energyChart.data.labels.push(`Passo ${step}`);
-            state.energyChart.data.datasets[0].data.push(currentEnergy);
+            state.energyChart.data.datasets[0].data.push(currentCost);
             state.energyChart.update();
         });
 
-        state.lastQaoaResult = solverRes;
+        state.lastSaResult = saRes;
 
-        // 5. Update State Histogram
-        const topSamples = solverRes.topSamples;
-        state.stateHistogramChart.data.labels = topSamples.map(s => `|${s.bitstring}>`);
-        state.stateHistogramChart.data.datasets[0].data = topSamples.map(s => (s.probability * 100).toFixed(1));
-        state.stateHistogramChart.data.datasets[0].backgroundColor = topSamples.map(s => 
-            s.isValid ? '#00f2fe' : 'rgba(247, 37, 133, 0.6)'
-        );
-        state.stateHistogramChart.update();
-
-        // 6. Update Comparison Table
+        // 5. Update Comparison Table
         const tableBody = document.getElementById('tableBody');
         tableBody.innerHTML = '';
-        topSamples.forEach(sample => {
-            const tr = document.createElement('tr');
-            const statusTag = sample.isValid 
-                ? `<span class="tag-valid">VÁLIDO</span>` 
-                : `<span class="tag-invalid">INVÁLIDO</span>`;
-            
-            const routeStr = sample.isValid ? sample.cityNames.join(' ➔ ') : 'Violação de restrições';
-            const distStr = sample.isValid ? `${sample.totalDistance.toFixed(1)} km` : '-';
+        
+        const trSA = document.createElement('tr');
+        trSA.innerHTML = `
+            <td><strong style="color:#00f2fe;">🔥 Simulated Annealing</strong></td>
+            <td><strong>${saRes.bestValidSample.totalDistance.toFixed(1)} km</strong></td>
+            <td>${saRes.finalTemp.toFixed(4)} K</td>
+            <td><span class="tag-valid">VÁLIDO</span></td>
+            <td style="font-size:0.8rem; color:#94a3b8;">${saRes.bestValidSample.cityNames.join(' ➔ ')}</td>
+        `;
+        tableBody.appendChild(trSA);
 
-            tr.innerHTML = `
-                <td><code style="color:#00f2fe;">|${sample.bitstring}></code></td>
-                <td>${(sample.probability * 100).toFixed(2)}%</td>
-                <td>${sample.energy.toFixed(1)}</td>
-                <td>${statusTag}</td>
-                <td>${distStr}</td>
-                <td style="font-size:0.8rem; color:#94a3b8;">${routeStr}</td>
+        if (classicalRes) {
+            const trClass = document.createElement('tr');
+            trClass.innerHTML = `
+                <td><strong style="color:#10b981;">🏁 Referência 2-Opt</strong></td>
+                <td><strong>${classicalRes.totalDistance.toFixed(1)} km</strong></td>
+                <td>0 K</td>
+                <td><span class="tag-valid">EXATO</span></td>
+                <td style="font-size:0.8rem; color:#94a3b8;">${classicalRes.cityNames.join(' ➔ ')}</td>
             `;
-            tableBody.appendChild(tr);
-        });
+            tableBody.appendChild(trClass);
+        }
 
-        // 7. Update Map
-        drawRoutes(classicalRes, solverRes.bestValidSample, selectedCities);
+        // 6. Update Map
+        drawRoutes(classicalRes, saRes.bestValidSample, selectedCities);
 
         runBtn.disabled = false;
-        runBtn.innerHTML = `<span>⚡ Executar Otimizador</span>`;
+        runBtn.innerHTML = `<span>🔥 Executar Simulated Annealing</span>`;
     }
 
     runBtn.addEventListener('click', runOptimization);

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caixeiro Viajante - 20 Cidades da Malásia (QAOA & Simulated Annealing)</title>
+    <title>Caixeiro Viajante - Simulated Annealing (Malásia)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,15 +27,15 @@
     <!-- Header / Navbar -->
     <header class="navbar">
         <div class="brand">
-            <div class="brand-logo">🇲🇾</div>
+            <div class="brand-logo">🔥</div>
             <div>
-                <h1 class="brand-title">TSP Malásia (20 Cidades)</h1>
-                <p class="brand-subtitle">Otimização no Problema do Caixeiro Viajante com Simulated Annealing e QAOA</p>
+                <h1 class="brand-title">TSP Malásia - Simulated Annealing</h1>
+                <p class="brand-subtitle">Otimização Estocástica no Caixeiro Viajante com Têmpera Simulada & Critério de Metropolis-Hastings</p>
             </div>
         </div>
         <div class="nav-badges">
             <div class="badge badge-quantum">
-                <span>⚡</span> <span id="qubitCountBadge">20 Cidades | Simulated Annealing / QAOA</span>
+                <span>🔥</span> <span id="qubitCountBadge">20 Cidades | Simulated Annealing</span>
             </div>
             <div class="badge badge-malaysia">
                 <span>🇲🇾</span> <span>20 Cidades da Malásia</span>
@@ -58,7 +58,7 @@
                 <!-- Quick Selection Buttons -->
                 <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
                     <button id="btnSelectMain7" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">7 Principais</button>
-                    <button id="btnSelectAll20" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(157, 78, 221, 0.15); color: #9d4edd; border: 1px solid rgba(157, 78, 221, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">Todas (20)</button>
+                    <button id="btnSelectAll20" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">Todas (20)</button>
                 </div>
 
                 <div class="city-list" id="cityList">
@@ -66,101 +66,86 @@
                 </div>
             </div>
 
-            <!-- QAOA Parameters Card -->
+            <!-- Simulated Annealing Parameters Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h2 class="card-title">⚙️ Algoritmo & Parâmetros</h2>
+                    <h2 class="card-title">⚙️ Parâmetros do Resfriamento</h2>
                 </div>
                 <div class="control-group">
                     <div>
                         <div class="input-label">
-                            <span>Selecione o Algoritmo:</span>
+                            <span>Temperatura Inicial (T₀):</span>
+                            <span class="val-badge" id="tempVal">1000 K</span>
                         </div>
-                        <select id="encodingMode" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.4); color: #00f2fe; border: 1px solid rgba(0,242,254,0.3); font-family: var(--font-heading); font-weight: 600;">
-                            <option value="sa">🔥 Simulated Annealing (Têmpera Simulada)</option>
-                            <option value="log">⚛️ QAOA Logarítmico Compacto (N log N)</option>
-                            <option value="onehot">⚛️ QAOA Quadrático One-Hot (N²)</option>
-                        </select>
+                        <input type="range" id="tInitial" min="100" max="3000" step="100" value="1000">
                     </div>
                     <div>
                         <div class="input-label">
-                            <span>Camadas QAOA (p):</span>
-                            <span class="val-badge" id="layersVal">2</span>
+                            <span>Fator de Resfriamento (α):</span>
+                            <span class="val-badge" id="alphaVal">0.995</span>
                         </div>
-                        <input type="range" id="qaoaLayers" min="1" max="5" value="2">
+                        <input type="range" id="coolingAlpha" min="0.950" max="0.999" step="0.001" value="0.995">
                     </div>
                     <div>
                         <div class="input-label">
-                            <span>Iterações / Passos:</span>
-                            <span class="val-badge" id="maxIterVal">500</span>
+                            <span>Iterações Máximas:</span>
+                            <span class="val-badge" id="maxIterVal">1500</span>
                         </div>
-                        <input type="range" id="maxIter" min="50" max="2500" step="50" value="500">
+                        <input type="range" id="maxIter" min="100" max="5000" step="100" value="1500">
                     </div>
                     <button id="runBtn" class="btn-primary">
-                        <span>⚡ Executar Otimizador</span>
+                        <span>🔥 Executar Simulated Annealing</span>
                     </button>
                 </div>
             </div>
 
         </aside>
 
-        <!-- Main Column: Map + Quantum Inspector -->
+        <!-- Main Column: Map + Diagnostics -->
         <section class="main-column">
             
             <!-- Interactive Map Card -->
             <div class="glass-card map-card">
                 <div class="map-stats-overlay">
                     <div class="stat-pill stat-quantum">
-                        <span>Rota Otimizada (SA / QAOA):</span>
+                        <span>Simulated Annealing:</span>
                         <span id="statQuantumDist">Calculando...</span>
                     </div>
                     <div class="stat-pill stat-classical">
-                        <span>Exato Clássico:</span>
+                        <span>Referência 2-Opt:</span>
                         <span id="statClassicalDist">Calculando...</span>
                     </div>
                 </div>
                 <div id="map"></div>
             </div>
 
-            <!-- Quantum Inspector & Diagnostics -->
+            <!-- Diagnostics & Inspector Tabs -->
             <div class="glass-card">
                 <div class="tabs-header">
-                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Convergência & Medição</button>
-                    <button class="tab-btn" data-tab="tabQubo">🧮 Matriz & Circuito</button>
-                    <button class="tab-btn" data-tab="tabTable">📋 Tabela de Estados Medidos</button>
+                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Curva de Energia & Resfriamento</button>
+                    <button class="tab-btn" data-tab="tabQubo">🧮 Matriz de Distâncias</button>
+                    <button class="tab-btn" data-tab="tabTable">📋 Detalhes da Rota Otimizada</button>
                 </div>
 
                 <!-- Tab 1: Analytics & Convergence -->
                 <div class="tab-content active" id="tabAnalytics">
                     <div class="charts-grid">
-                        <div>
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Curva de Resfriamento / Energia &lt;E&gt;</h4>
-                            <div class="chart-container">
+                        <div style="grid-column: 1 / -1;">
+                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Convergência da Distância (km) vs Iterações de Resfriamento</h4>
+                            <div class="chart-container" style="height: 280px;">
                                 <canvas id="energyChart"></canvas>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Distribuição de Probabilidades dos Estados |c_s|²</h4>
-                            <div class="chart-container">
-                                <canvas id="stateHistogramChart"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab 2: QUBO & Circuit Diagram -->
+                <!-- Tab 2: Distance Matrix Heatmap -->
                 <div class="tab-content" id="tabQubo">
                     <div class="charts-grid">
-                        <div>
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Heatmap da Matriz de Acoplamento Q_ij</h4>
+                        <div style="grid-column: 1 / -1;">
+                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Heatmap da Matriz de Distâncias entre Cidades W_ij (km)</h4>
                             <div class="matrix-wrapper">
                                 <canvas id="quboCanvas"></canvas>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Estrutura do Circuito Quântico / Metaheurística</h4>
-                            <div class="circuit-diagram" id="circuitContainer">
-                                <!-- Generated by JS -->
                             </div>
                         </div>
                     </div>
@@ -172,12 +157,11 @@
                         <table class="custom-table">
                             <thead>
                                 <tr>
-                                    <th>Estado / Sequência |x⟩</th>
-                                    <th>Probabilidade (%)</th>
-                                    <th>Energia / Custo</th>
-                                    <th>Status Restrição</th>
-                                    <th>Distância (km)</th>
-                                    <th>Sequência da Rota</th>
+                                    <th>Algoritmo</th>
+                                    <th>Distância Total (km)</th>
+                                    <th>Temperatura Final (K)</th>
+                                    <th>Status Rota</th>
+                                    <th>Sequência Completa das Cidades</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
