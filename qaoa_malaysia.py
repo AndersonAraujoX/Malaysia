@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 """
-Simulated Annealing (SA) Traveling Salesperson Problem (TSP) - 20 Cities of Malaysia
-======================================================================================
-Solves the TSP for 20 major Malaysian cities using Simulated Annealing (Metropolis-Hastings 2-opt).
+Simulated Annealing Traveling Salesperson Problem (TSP) - Malaysia 20 Cities
+=============================================================================
+Solves the Traveling Salesperson Problem (TSP) for 20 major cities of Malaysia 
+using Simulated Annealing (Metropolis-Hastings 2-opt cooling).
 """
 
 import math
 import random
-import itertools
 import numpy as np
 
-# -----------------------------------------------------------------------------
-# 1. 20 Malaysian Cities Dataset
-# -----------------------------------------------------------------------------
 CITIES = [
     {"id": 0, "name": "Kuala Lumpur", "state": "Federal Territory", "lat": 3.1390, "lon": 101.6869},
     {"id": 1, "name": "George Town", "state": "Penang", "lat": 5.4164, "lon": 100.3327},
@@ -47,15 +44,15 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 def build_distance_matrix(cities):
     n = len(cities)
-    dist_matrix = np.zeros((n, n))
+    matrix = np.zeros((n, n))
     for i in range(n):
         for j in range(n):
             if i != j:
-                dist_matrix[i, j] = haversine_distance(
+                matrix[i, j] = haversine_distance(
                     cities[i]["lat"], cities[i]["lon"],
                     cities[j]["lat"], cities[j]["lon"]
                 )
-    return dist_matrix
+    return matrix
 
 class SimulatedAnnealingTSPSolver:
     def __init__(self, cities, dist_matrix, t_initial=2000.0, alpha=0.998, max_iter=5000):
@@ -124,7 +121,7 @@ if __name__ == "__main__":
     print("=" * 75)
     print(f"  SIMULATED ANNEALING TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
     print("=" * 75)
-    
+
     dist_mat = build_distance_matrix(CITIES)
     sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=2000.0, alpha=0.998, max_iter=6000)
     result = sa_solver.solve()

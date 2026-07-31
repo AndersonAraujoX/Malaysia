@@ -1,5 +1,6 @@
 /**
- * Main Web Application Controller for Simulated Annealing TSP
+ * Main Web Application Controller & Leaflet / Visualizations Integration
+ * Simulated Annealing & TSP for Malaysian Cities
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -19,9 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // DOM Element References
     const cityListEl = document.getElementById('cityList');
     const tInitialSlider = document.getElementById('tInitial');
-    const tempValEl = document.getElementById('tempVal');
-    const coolingAlphaSlider = document.getElementById('coolingAlpha');
-    const alphaValEl = document.getElementById('alphaVal');
+    const tValEl = document.getElementById('tVal');
     const maxIterSlider = document.getElementById('maxIter');
     const maxIterValEl = document.getElementById('maxIterVal');
     const runBtn = document.getElementById('runBtn');
@@ -58,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSelected = state.selectedCityIds.has(city.id);
             const iconHtml = `
                 <div class="map-marker-pin ${isSelected ? 'active' : 'disabled'}" style="
-                    background: ${isSelected ? 'linear-gradient(135deg, #00f2fe, #f59e0b)' : '#334155'};
+                    background: ${isSelected ? 'linear-gradient(135deg, #00f2fe, #9d4edd)' : '#334155'};
                     color: #fff;
                     width: 30px;
                     height: 30px;
@@ -125,16 +124,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 renderCityList();
                 renderCityMarkers();
-                updateQubitCount();
+                updateBadge();
             });
 
             cityListEl.appendChild(item);
         });
     }
 
-    function updateQubitCount() {
+    function updateBadge() {
         const numSelected = state.selectedCityIds.size;
-        qubitCountBadge.textContent = `${numSelected} Cidades | Simulated Annealing`;
+        qubitCountBadge.textContent = `${numSelected} Cidades | Simulated Annealing (Metaheurística)`;
     }
 
     if (btnSelectMain7) {
@@ -142,7 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.selectedCityIds = new Set([0, 1, 2, 3, 4, 5, 6]);
             renderCityList();
             renderCityMarkers();
-            updateQubitCount();
+            updateBadge();
         });
     }
 
@@ -151,26 +150,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.selectedCityIds = new Set(Array.from({ length: 20 }, (_, i) => i));
             renderCityList();
             renderCityMarkers();
-            updateQubitCount();
+            updateBadge();
         });
     }
 
     // 3. Setup Sliders & Tabs
     if (tInitialSlider) {
         tInitialSlider.addEventListener('input', (e) => {
-            tempValEl.textContent = `${e.target.value} K`;
-        });
-    }
-
-    if (coolingAlphaSlider) {
-        coolingAlphaSlider.addEventListener('input', (e) => {
-            alphaValEl.textContent = e.target.value;
+            if (tValEl) tValEl.textContent = `${e.target.value} K`;
         });
     }
 
     if (maxIterSlider) {
         maxIterSlider.addEventListener('input', (e) => {
-            maxIterValEl.textContent = e.target.value;
+            if (maxIterValEl) maxIterValEl.textContent = e.target.value;
         });
     }
 
@@ -180,26 +173,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             tabContents.forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             const targetId = btn.dataset.tab;
-            document.getElementById(targetId).classList.add('active');
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) targetEl.classList.add('active');
         });
     });
 
     // 4. Initialize Chart.js Instance
     function initCharts() {
-        const energyCtx = document.getElementById('energyChart').getContext('2d');
+        const energyCanvas = document.getElementById('energyChart');
+        if (!energyCanvas) return;
+        const energyCtx = energyCanvas.getContext('2d');
         state.energyChart = new Chart(energyCtx, {
             type: 'line',
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Distância do Tour (km)',
+                    label: 'Energia / Custo da Rota (km)',
                     data: [],
                     borderColor: '#00f2fe',
                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
                     fill: true,
-                    tension: 0.2,
+                    tension: 0.3,
                     borderWidth: 2,
-                    pointRadius: 1.5
+                    pointRadius: 2
                 }]
             },
             options: {
@@ -214,16 +210,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 5. Draw Distance Matrix Heatmap Canvas
-    function drawQUBOHeatmap(saEngine) {
+    // 5. Draw Matrix Heatmap Canvas Safely
+    function drawQUBOHeatmap(solverEngine) {
         const canvas = document.getElementById('quboCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const Q = saEngine ? saEngine.Q : null;
+        const Q = solverEngine ? solverEngine.Q : null;
         if (!Q || !Q.length) return;
 
         const n = Q.length;
-
         const cellSize = Math.min(30, Math.floor(260 / n));
         canvas.width = n * cellSize;
         canvas.height = n * cellSize;
@@ -245,6 +240,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (val > 0) {
                     ctx.fillStyle = `rgba(0, 242, 254, ${Math.min(1.0, norm + 0.15)})`;
+                } else if (val < 0) {
+                    ctx.fillStyle = `rgba(247, 37, 133, ${Math.min(1.0, norm + 0.15)})`;
                 } else {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
                 }
@@ -255,7 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 6. Update Map Polylines
-    function drawRoutes(classicalResult, saBestSample, selectedCities) {
+    function drawRoutes(classicalResult, saResult, selectedCities) {
         if (state.classicalPolyline) state.map.removeLayer(state.classicalPolyline);
         if (state.saPolyline) state.map.removeLayer(state.saPolyline);
 
@@ -276,8 +273,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             statClassicalDist.textContent = `${classicalResult.totalDistance.toFixed(1)} km`;
         }
 
-        if (saBestSample && saBestSample.isValid && saBestSample.tourIndices) {
-            const saLatLons = saBestSample.tourIndices.map(idx => {
+        if (saResult && saResult.bestValidSample && saResult.bestValidSample.tourIndices) {
+            const saLatLons = saResult.bestValidSample.tourIndices.map(idx => {
                 const c = selectedCities[idx];
                 return [c.lat, c.lon];
             });
@@ -289,83 +286,77 @@ document.addEventListener('DOMContentLoaded', async () => {
                 opacity: 0.95
             }).addTo(state.map);
 
-            statQuantumDist.textContent = `${saBestSample.totalDistance.toFixed(1)} km`;
+            statQuantumDist.textContent = `${saResult.bestValidSample.totalDistance.toFixed(1)} km`;
         } else {
             statQuantumDist.textContent = "Sem rota válida";
         }
     }
 
-    // 7. Execute Simulated Annealing Solver Runner
+    // 7. Execute Solver Runner
     async function runOptimization() {
         runBtn.disabled = true;
-        runBtn.innerHTML = `<span>⏳ Resfriando Simulated Annealing...</span>`;
+        runBtn.innerHTML = `<span>⏳ Otimizando...</span>`;
 
         const selectedCities = MALAYSIA_CITIES.filter(c => state.selectedCityIds.has(c.id));
-        const tInitial = parseFloat(tInitialSlider.value);
-        const alpha = parseFloat(coolingAlphaSlider.value);
-        const maxIter = parseInt(maxIterSlider.value, 10);
+        const tInit = tInitialSlider ? parseInt(tInitialSlider.value, 10) : 1000;
+        const maxIter = maxIterSlider ? parseInt(maxIterSlider.value, 10) : 1000;
 
-        // 1. Classical Solution Benchmark
+        // 1. Classical Exact Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
         // 2. Initialize Simulated Annealing Engine
-        const saEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInitial, alpha);
+        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, 0.995);
 
-        // 3. Render Distance Matrix Heatmap
-        drawQUBOHeatmap(saEngine);
+        // 3. Render Matrix Heatmap
+        drawQUBOHeatmap(solverEngine);
 
-        state.energyChart.data.labels = [];
-        state.energyChart.data.datasets[0].data = [];
-        state.energyChart.update();
-
-        // 4. Run Simulated Annealing Simulation
-        const saRes = await saEngine.runAnnealing(maxIter, (step, currentCost, temp) => {
-            state.energyChart.data.labels.push(`Passo ${step}`);
-            state.energyChart.data.datasets[0].data.push(currentCost);
+        if (state.energyChart) {
+            state.energyChart.data.labels = [];
+            state.energyChart.data.datasets[0].data = [];
             state.energyChart.update();
+        }
+
+        // 4. Run Simulation
+        const solverRes = await solverEngine.runSolver(maxIter, (step, currentEnergy) => {
+            if (state.energyChart) {
+                state.energyChart.data.labels.push(`Passo ${step}`);
+                state.energyChart.data.datasets[0].data.push(currentEnergy);
+                state.energyChart.update();
+            }
         });
 
-        state.lastSaResult = saRes;
+        state.lastSaResult = solverRes;
 
         // 5. Update Comparison Table
         const tableBody = document.getElementById('tableBody');
-        tableBody.innerHTML = '';
-        
-        const trSA = document.createElement('tr');
-        trSA.innerHTML = `
-            <td><strong style="color:#00f2fe;">🔥 Simulated Annealing</strong></td>
-            <td><strong>${saRes.bestValidSample.totalDistance.toFixed(1)} km</strong></td>
-            <td>${saRes.finalTemp.toFixed(4)} K</td>
-            <td><span class="tag-valid">VÁLIDO</span></td>
-            <td style="font-size:0.8rem; color:#94a3b8;">${saRes.bestValidSample.cityNames.join(' ➔ ')}</td>
-        `;
-        tableBody.appendChild(trSA);
-
-        if (classicalRes) {
-            const trClass = document.createElement('tr');
-            trClass.innerHTML = `
-                <td><strong style="color:#10b981;">🏁 Referência 2-Opt</strong></td>
-                <td><strong>${classicalRes.totalDistance.toFixed(1)} km</strong></td>
-                <td>0 K</td>
-                <td><span class="tag-valid">EXATO</span></td>
-                <td style="font-size:0.8rem; color:#94a3b8;">${classicalRes.cityNames.join(' ➔ ')}</td>
-            `;
-            tableBody.appendChild(trClass);
+        if (tableBody) {
+            tableBody.innerHTML = '';
+            const sample = solverRes.bestValidSample;
+            if (sample) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><code style="color:#00f2fe;">Simulated Annealing</code></td>
+                    <td><span class="tag-valid">VÁLIDO</span></td>
+                    <td>${sample.totalDistance.toFixed(1)} km</td>
+                    <td style="font-size:0.85rem; color:#94a3b8;">${sample.cityNames.join(' ➔ ')}</td>
+                `;
+                tableBody.appendChild(tr);
+            }
         }
 
-        // 6. Update Map
-        drawRoutes(classicalRes, saRes.bestValidSample, selectedCities);
+        // 6. Update Map Routes
+        drawRoutes(classicalRes, solverRes, selectedCities);
 
         runBtn.disabled = false;
-        runBtn.innerHTML = `<span>🔥 Executar Simulated Annealing</span>`;
+        runBtn.innerHTML = `<span>⚡ Executar Simulated Annealing</span>`;
     }
 
     runBtn.addEventListener('click', runOptimization);
 
     initMap();
     renderCityList();
-    updateQubitCount();
+    updateBadge();
     initCharts();
 
     setTimeout(() => {

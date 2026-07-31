@@ -114,6 +114,7 @@ class JSSimulatedAnnealingEngine {
         };
     }
 
+    // Alias for compatibility
     async runQAOA(layers = 1, maxIter = 1000, onProgress = null) {
         return await this.runSolver(maxIter, onProgress);
     }
