@@ -210,48 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 5. Draw Matrix Heatmap Canvas Safely
-    function drawQUBOHeatmap(solverEngine) {
-        const canvas = document.getElementById('quboCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const Q = solverEngine ? solverEngine.Q : null;
-        if (!Q || !Q.length) return;
-
-        const n = Q.length;
-        const cellSize = Math.min(30, Math.floor(260 / n));
-        canvas.width = n * cellSize;
-        canvas.height = n * cellSize;
-
-        let maxVal = 0;
-        for (let i = 0; i < n; i++) {
-            if (!Q[i]) continue;
-            for (let j = 0; j < Q[i].length; j++) {
-                if (Math.abs(Q[i][j]) > maxVal) maxVal = Math.abs(Q[i][j]);
-            }
-        }
-        if (maxVal === 0) maxVal = 1;
-
-        for (let i = 0; i < n; i++) {
-            if (!Q[i]) continue;
-            for (let j = 0; j < Q[i].length; j++) {
-                const val = Q[i][j];
-                const norm = Math.abs(val) / maxVal;
-                
-                if (val > 0) {
-                    ctx.fillStyle = `rgba(0, 242, 254, ${Math.min(1.0, norm + 0.15)})`;
-                } else if (val < 0) {
-                    ctx.fillStyle = `rgba(247, 37, 133, ${Math.min(1.0, norm + 0.15)})`;
-                } else {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-                }
-
-                ctx.fillRect(j * cellSize, i * cellSize, cellSize - 1, cellSize - 1);
-            }
-        }
-    }
-
-    // 6. Update Map Polylines
+    // 5. Update Map Polylines
     function drawRoutes(classicalResult, saResult, selectedCities) {
         if (state.classicalPolyline) state.map.removeLayer(state.classicalPolyline);
         if (state.saPolyline) state.map.removeLayer(state.saPolyline);
@@ -292,7 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 7. Execute Solver Runner
+    // 6. Execute Solver Runner
     async function runOptimization() {
         runBtn.disabled = true;
         runBtn.innerHTML = `<span>⏳ Otimizando...</span>`;
@@ -301,15 +260,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tInit = tInitialSlider ? parseInt(tInitialSlider.value, 10) : 1000;
         const maxIter = maxIterSlider ? parseInt(maxIterSlider.value, 10) : 1000;
 
-        // 1. Classical Exact Solution
+        // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
         // 2. Initialize Simulated Annealing Engine
         const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, 0.995);
-
-        // 3. Render Matrix Heatmap
-        drawQUBOHeatmap(solverEngine);
 
         if (state.energyChart) {
             state.energyChart.data.labels = [];
@@ -317,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.energyChart.update();
         }
 
-        // 4. Run Simulation
+        // 3. Run Simulation
         const solverRes = await solverEngine.runSolver(maxIter, (step, currentEnergy) => {
             if (state.energyChart) {
                 state.energyChart.data.labels.push(`Passo ${step}`);
@@ -328,24 +284,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         state.lastSaResult = solverRes;
 
-        // 5. Update Comparison Table
+        // 4. Update Comparison Table matching exact header column order:
+        // Algoritmo | Status Rota | Distância Total (km) | Temperatura Final (K) | Sequência Completa das Cidades
         const tableBody = document.getElementById('tableBody');
         if (tableBody) {
             tableBody.innerHTML = '';
             const sample = solverRes.bestValidSample;
             if (sample) {
                 const tr = document.createElement('tr');
+                const finalTemp = solverRes.optimalParams[0] ? solverRes.optimalParams[0].toFixed(2) : '0.00';
                 tr.innerHTML = `
                     <td><code style="color:#00f2fe;">Simulated Annealing</code></td>
                     <td><span class="tag-valid">VÁLIDO</span></td>
-                    <td>${sample.totalDistance.toFixed(1)} km</td>
-                    <td style="font-size:0.85rem; color:#94a3b8;">${sample.cityNames.join(' ➔ ')}</td>
+                    <td style="font-weight: 700; color: #00f2fe;">${sample.totalDistance.toFixed(1)} km</td>
+                    <td style="font-family: var(--font-mono);">${finalTemp} K</td>
+                    <td style="font-size:0.82rem; color:#94a3b8; line-height: 1.4;">${sample.cityNames.join(' ➔ ')}</td>
                 `;
                 tableBody.appendChild(tr);
             }
         }
 
-        // 6. Update Map Routes
+        // 5. Update Map Routes
         drawRoutes(classicalRes, solverRes, selectedCities);
 
         runBtn.disabled = false;

@@ -18,19 +18,6 @@ class JSSimulatedAnnealingEngine {
                 this.distMatrix[i][j] = distMatrixFull[origI][origJ];
             }
         }
-        
-        let maxD = 0;
-        for (let i = 0; i < this.N; i++) {
-            for (let j = 0; j < this.N; j++) {
-                if (this.distMatrix[i][j] > maxD) maxD = this.distMatrix[i][j];
-            }
-        }
-        this.Q = Array.from({ length: 16 }, () => new Float64Array(16));
-        for (let i = 0; i < 16; i++) {
-            for (let j = 0; j < 16; j++) {
-                this.Q[i][j] = (i === j) ? -maxD : (i + j) * 0.2 * maxD;
-            }
-        }
     }
 
     calculateTourDistance(tour) {
@@ -112,10 +99,5 @@ class JSSimulatedAnnealingEngine {
             topSamples: [bestSample],
             bestValidSample: bestSample
         };
-    }
-
-    // Alias for compatibility
-    async runQAOA(layers = 1, maxIter = 1000, onProgress = null) {
-        return await this.runSolver(maxIter, onProgress);
     }
 }
