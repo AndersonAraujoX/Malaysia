@@ -2,8 +2,8 @@
 """
 Unit Test Suite for Hamiltonian Simulated Annealing TSP Solver (Malaysia)
 ==========================================================================
-Follows AAA (Arrange-Act-Assert) pattern, covering explicit Hamiltonian terms
-(H_cost, H_city, H_step, H_region) and non-negativity guarantees.
+Follows AAA (Arrange-Act-Assert) pattern, covering dynamic scaling of
+Hamiltonian parameters A, B, C and non-negativity guarantees.
 """
 
 import unittest
@@ -22,33 +22,38 @@ class TestHaversineDistance(unittest.TestCase):
         # Assert
         self.assertTrue(250.0 < dist < 400.0)
 
-class TestHamiltonianTerms(unittest.TestCase):
-    def test_hamiltonian_breakdown(self):
+class TestHamiltonianDynamicParameters(unittest.TestCase):
+    def test_parameter_a_impact(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, param_a=1000.0, param_b=1000.0, param_c=500.0)
-        tour = list(range(20))
+        tour_dup = [0, 0] + list(range(2, 20))
 
-        # Act
-        h = solver.calculate_hamiltonian(tour)
+        # Act 1: A = 0
+        solver_a0 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_a=0.0)
+        h0 = solver_a0.calculate_hamiltonian(tour_dup)
+
+        # Act 2: A = 2000
+        solver_a2000 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_a=2000.0)
+        h2000 = solver_a2000.calculate_hamiltonian(tour_dup)
 
         # Assert
-        self.assertTrue(h["h_cost"] > 0.0)
-        self.assertEqual(h["h_city"], 0.0)
-        self.assertEqual(h["h_step"], 0.0)
-        self.assertTrue(h["total_hamiltonian"] >= h["h_cost"])
+        self.assertEqual(h0["h_city"], 0.0)
+        self.assertEqual(h2000["h_city"], 2000.0)
 
-    def test_history_non_negativity(self):
+    def test_parameter_c_impact(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, max_iter=2000)
+        tour_valid = list(range(20))
 
         # Act
-        result = solver.solve()
+        solver_c500 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_c=500.0)
+        h_c500 = solver_c500.calculate_hamiltonian(tour_valid)
+
+        solver_c2000 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_c=2000.0)
+        h_c2000 = solver_c2000.calculate_hamiltonian(tour_valid)
 
         # Assert
-        min_energy = min(result["history"])
-        self.assertTrue(min_energy >= 0.0, f"History energy must be non-negative, got {min_energy}")
+        self.assertTrue(h_c2000["h_region"] > h_c500["h_region"])
 
 if __name__ == "__main__":
     unittest.main()

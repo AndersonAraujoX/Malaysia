@@ -15,20 +15,35 @@ test('Haversine Distance - Happy Path', () => {
     assert.ok(dist > 250 && dist < 400, `Distance should be ~300km, got ${dist}`);
 });
 
-test('Hamiltonian Calculation Breakdown - H_cost, H_city, H_step, H_region', () => {
+test('Hamiltonian Parameters A, B, C Dynamic Impact', () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 1000.0, 1000.0, 500.0);
-    const tour = Array.from({ length: 20 }, (_, i) => i);
+    const tourWithDuplicates = [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 
-    // Act
-    const h = engine.calculateHamiltonian(tour);
+    // Act 1: A = 0
+    const engineA0 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 0.0, 1000.0, 500.0);
+    const h0 = engineA0.calculateHamiltonian(tourWithDuplicates);
 
-    // Assert
-    assert.ok(h.hCost > 0, `H_cost must be positive physical distance`);
-    assert.equal(h.hCity, 0, `H_city should be 0 for valid permutation`);
-    assert.equal(h.hStep, 0, `H_step should be 0 for valid tour length`);
-    assert.ok(h.totalHamiltonian >= h.hCost, `Total Hamiltonian must equal or exceed H_cost`);
+    // Assert 1
+    assert.equal(h0.hCity, 0, `When A = 0, hCity must be 0`);
+
+    // Act 2: A = 2000
+    const engineA2000 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 2000.0, 1000.0, 500.0);
+    const h2000 = engineA2000.calculateHamiltonian(tourWithDuplicates);
+
+    // Assert 2
+    assert.equal(h2000.hCity, 2000.0, `When A = 2000 and 1 city missing, hCity must be 2000`);
+
+    // Act 3: C scaling (Regional Transit Penalty)
+    const validTour = Array.from({ length: 20 }, (_, i) => i); // Has 2 sea crossings
+    const engineC500 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 1000.0, 1000.0, 500.0);
+    const hC500 = engineC500.calculateHamiltonian(validTour);
+
+    const engineC2000 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 1000.0, 1000.0, 2000.0);
+    const hC2000 = engineC2000.calculateHamiltonian(validTour);
+
+    // Assert 3
+    assert.ok(hC2000.hRegion > hC500.hRegion, `Higher C multiplier must increase hRegion in table`);
 });
 
 test('Energy History Non-Negativity Guarantee', async () => {

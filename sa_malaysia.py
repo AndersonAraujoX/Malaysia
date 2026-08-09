@@ -5,6 +5,7 @@ Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 State-of-the-art Hybrid Simulated Annealing solver for 20 major cities of 
 Malaysia featuring Explicit Hamiltonian Operator Formulation:
 H = H_cost + A * H_city + B * H_step + C * H_region
+Supports Unconstrained State Exploration (City Replacements & Duplicates).
 """
 
 import math
@@ -71,8 +72,9 @@ class SimulatedAnnealingTSPSolver:
         if not tour or len(tour) == 0:
             return 0.0
         dist = 0.0
-        for k in range(self.N):
-            dist += self.dist_matrix[tour[k], tour[(k + 1) % self.N]]
+        n_tour = len(tour)
+        for k in range(n_tour):
+            dist += self.dist_matrix[tour[k], tour[(k + 1) % n_tour]]
         return dist
 
     def calculate_hamiltonian(self, tour):
@@ -81,18 +83,19 @@ class SimulatedAnnealingTSPSolver:
 
         h_cost = self.calculate_tour_distance(tour)
         unique_count = len(set(tour))
-        h_city = (self.N - unique_count) * self.param_a
+        missing_cities = self.N - unique_count
+        h_city = missing_cities * self.param_a
         h_step = abs(self.N - len(tour)) * self.param_b
 
         crossings = 0
-        for k in range(self.N):
+        n_tour = len(tour)
+        for k in range(n_tour):
             r1 = self.cities[tour[k]].get("region")
-            r2 = self.cities[tour[(k + 1) % self.N]].get("region")
+            r2 = self.cities[tour[(k + 1) % n_tour]].get("region")
             if r1 and r2 and r1 != r2:
                 crossings += 1
 
-        excess_crossings = max(0, crossings - 2)
-        h_region = excess_crossings * self.param_c
+        h_region = crossings * self.param_c
         total = h_cost + h_city + h_step + h_region
 
         return {
@@ -100,6 +103,8 @@ class SimulatedAnnealingTSPSolver:
             "h_city": h_city,
             "h_step": h_step,
             "h_region": h_region,
+            "missing_cities": missing_cities,
+            "crossings": crossings,
             "total_hamiltonian": total
         }
 
@@ -140,6 +145,11 @@ class SimulatedAnnealingTSPSolver:
         new_tour = tour.copy()
         node = new_tour.pop(frm)
         new_tour.insert(to, node)
+        return new_tour
+
+    def apply_replacement(self, tour, idx, new_city_id):
+        new_tour = tour.copy()
+        new_tour[idx] = new_city_id
         return new_tour
 
     def refine_2opt(self, tour):
@@ -185,17 +195,22 @@ class SimulatedAnnealingTSPSolver:
             T = self.t_initial
 
             for step in range(iter_per_restart):
-                is_2opt = random.random() < 0.75
-                if is_2opt:
+                move_prob = random.random()
+
+                if move_prob < 0.65:
                     i = random.randint(0, self.N - 2)
                     j = random.randint(i + 1, self.N - 1)
                     if i == 0 and j == self.N - 1:
                         j = self.N - 2
                     candidate_tour = self.apply_2opt(current_tour, i, j)
-                else:
+                elif move_prob < 0.85:
                     i = random.randint(0, self.N - 1)
                     j = random.randint(0, self.N - 1)
                     candidate_tour = self.apply_insertion(current_tour, i, j)
+                else:
+                    i = random.randint(0, self.N - 1)
+                    new_city_id = random.randint(0, self.N - 1)
+                    candidate_tour = self.apply_replacement(current_tour, i, new_city_id)
 
                 candidate_energy = self.calculate_total_energy(candidate_tour)
                 delta_E = candidate_energy - current_energy
@@ -213,7 +228,9 @@ class SimulatedAnnealingTSPSolver:
                 if T < 1e-5:
                     break
 
-        global_best_tour, _ = self.refine_2opt(global_best_tour)
+        if self.param_a >= 1000:
+            global_best_tour, _ = self.refine_2opt(global_best_tour)
+
         h_final = self.calculate_hamiltonian(global_best_tour)
 
         return {

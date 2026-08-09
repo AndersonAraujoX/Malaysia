@@ -2,6 +2,7 @@
  * High-Performance Hybrid Simulated Annealing & Metaheuristic TSP Solver (JavaScript)
  * Features Explicit Hamiltonian Operator Formulation:
  * H = H_cost + A * H_city + B * H_step + C * H_region
+ * Supports Unconstrained State Exploration (City Replacements & Duplicates)
  */
 
 class JSSimulatedAnnealingEngine {
@@ -30,8 +31,9 @@ class JSSimulatedAnnealingEngine {
     calculateTourDistance(tour) {
         if (!tour || tour.length === 0) return 0;
         let dist = 0.0;
-        for (let k = 0; k < this.N; k++) {
-            dist += this.distMatrix[tour[k]][tour[(k + 1) % this.N]];
+        const len = tour.length;
+        for (let k = 0; k < len; k++) {
+            dist += this.distMatrix[tour[k]][tour[(k + 1) % len]];
         }
         return dist;
     }
@@ -42,30 +44,31 @@ class JSSimulatedAnnealingEngine {
      */
     calculateHamiltonian(tour) {
         if (!tour || tour.length === 0) {
-            return { hCost: 0, hCity: 0, hStep: 0, hRegion: 0, totalHamiltonian: 0 };
+            return { hCost: 0, hCity: 0, hStep: 0, hRegion: 0, missingCities: 0, crossings: 0, totalHamiltonian: 0 };
         }
 
         // 1. H_cost: Physical distance
         const hCost = this.calculateTourDistance(tour);
 
-        // 2. A * H_city: Uniqueness penalty (non-unique cities)
-        const uniqueCount = new Set(tour).size;
-        const hCity = (this.N - uniqueCount) * this.paramA;
+        // 2. A * H_city: Uniqueness penalty (missing/duplicate cities)
+        const uniqueSet = new Set(tour);
+        const missingCities = this.N - uniqueSet.size;
+        const hCity = missingCities * this.paramA;
 
         // 3. B * H_step: Step length mismatch penalty
         const hStep = Math.abs(this.N - tour.length) * this.paramB;
 
-        // 4. C * H_region: Excess inter-island sea crossing penalty (> 2)
+        // 4. C * H_region: Inter-island sea crossing penalty (count * C)
         let crossings = 0;
-        for (let k = 0; k < this.N; k++) {
+        const len = tour.length;
+        for (let k = 0; k < len; k++) {
             const r1 = this.selectedCities[tour[k]].region;
-            const r2 = this.selectedCities[tour[(k + 1) % this.N]].region;
+            const r2 = this.selectedCities[tour[(k + 1) % len]].region;
             if (r1 && r2 && r1 !== r2) {
                 crossings++;
             }
         }
-        const excessCrossings = Math.max(0, crossings - 2);
-        const hRegion = excessCrossings * this.paramC;
+        const hRegion = crossings * this.paramC;
 
         const totalHamiltonian = hCost + hCity + hStep + hRegion;
 
@@ -74,6 +77,8 @@ class JSSimulatedAnnealingEngine {
             hCity,
             hStep,
             hRegion,
+            missingCities,
+            crossings,
             totalHamiltonian
         };
     }
@@ -124,23 +129,6 @@ class JSSimulatedAnnealingEngine {
         return bestTour;
     }
 
-    /**
-     * Delta E evaluation for 2-Opt subsegment reversal [i, j]
-     */
-    evaluateDelta2Opt(tour, i, j) {
-        const newTour = this.apply2Opt(tour, i, j);
-        return this.calculateTotalEnergy(newTour) - this.calculateTotalEnergy(tour);
-    }
-
-    /**
-     * Delta E evaluation for Node Insertion
-     */
-    evaluateDeltaInsertion(tour, from, to) {
-        if (from === to) return 0;
-        const newTour = this.applyInsertion(tour, from, to);
-        return this.calculateTotalEnergy(newTour) - this.calculateTotalEnergy(tour);
-    }
-
     apply2Opt(tour, i, j) {
         const newTour = tour.slice();
         let left = i, right = j;
@@ -161,6 +149,12 @@ class JSSimulatedAnnealingEngine {
         return newTour;
     }
 
+    applyReplacement(tour, idx, newCityId) {
+        const newTour = tour.slice();
+        newTour[idx] = newCityId;
+        return newTour;
+    }
+
     /**
      * Deterministic 2-Opt local search refinement pass
      */
@@ -174,11 +168,11 @@ class JSSimulatedAnnealingEngine {
             for (let i = 0; i < this.N - 1; i++) {
                 for (let j = i + 1; j < this.N; j++) {
                     if (i === 0 && j === this.N - 1) continue;
-                    const newTour = this.apply2Opt(currentTour, i, j);
-                    const newEnergy = this.calculateTotalEnergy(newTour);
-                    if (newEnergy < currentEnergy - 1e-6) {
-                        currentTour = newTour;
-                        currentEnergy = newEnergy;
+                    const candidate = this.apply2Opt(currentTour, i, j);
+                    const candidateEnergy = this.calculateTotalEnergy(candidate);
+                    if (candidateEnergy < currentEnergy - 1e-6) {
+                        currentTour = candidate;
+                        currentEnergy = candidateEnergy;
                         improved = true;
                     }
                 }
@@ -209,7 +203,7 @@ class JSSimulatedAnnealingEngine {
                 bitstring: tour.join(' ➔ '),
                 probability: 1.0,
                 energy: h.totalHamiltonian,
-                isValid: (h.hCity === 0 && h.hStep === 0 && h.hRegion === 0),
+                isValid: (h.hCity === 0 && h.hStep === 0),
                 tourIndices: tour,
                 cityNames: cityNames,
                 totalDistance: h.hCost,
@@ -248,19 +242,25 @@ class JSSimulatedAnnealingEngine {
 
             for (let step = 1; step <= iterPerRestart; step++) {
                 currentStep++;
-                const is2Opt = Math.random() < 0.75;
-                let i = 0, j = 0;
+                const moveProb = Math.random();
                 let candidateTour;
 
-                if (is2Opt) {
-                    i = Math.floor(Math.random() * (this.N - 1));
-                    j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
+                if (moveProb < 0.65) {
+                    // 2-Opt Subsegment Reversal
+                    let i = Math.floor(Math.random() * (this.N - 1));
+                    let j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
                     if (i === 0 && j === this.N - 1) j = this.N - 2;
                     candidateTour = this.apply2Opt(currentTour, i, j);
-                } else {
-                    i = Math.floor(Math.random() * this.N);
-                    j = Math.floor(Math.random() * this.N);
+                } else if (moveProb < 0.85) {
+                    // Node Relocation / Insertion
+                    let i = Math.floor(Math.random() * this.N);
+                    let j = Math.floor(Math.random() * this.N);
                     candidateTour = this.applyInsertion(currentTour, i, j);
+                } else {
+                    // Unconstrained State Replacement (Enabled when A is low)
+                    let i = Math.floor(Math.random() * this.N);
+                    let newCityId = Math.floor(Math.random() * this.N);
+                    candidateTour = this.applyReplacement(currentTour, i, newCityId);
                 }
 
                 const candidateEnergy = this.calculateTotalEnergy(candidateTour);
@@ -285,9 +285,11 @@ class JSSimulatedAnnealingEngine {
             }
         }
 
-        // Post-processing: Apply deterministic 2-Opt refinement
-        const refined = this.refine2Opt(globalBestTour);
-        globalBestTour = refined.tour;
+        // Post-processing: Apply deterministic 2-Opt refinement (only if A is high enough)
+        if (this.paramA >= 1000) {
+            const refined = this.refine2Opt(globalBestTour);
+            globalBestTour = refined.tour;
+        }
 
         const hFinal = this.calculateHamiltonian(globalBestTour);
         const cityNames = globalBestTour.map(i => this.selectedCities[i].name);
@@ -296,7 +298,7 @@ class JSSimulatedAnnealingEngine {
             bitstring: globalBestTour.join(' ➔ '),
             probability: 1.0,
             energy: hFinal.totalHamiltonian,
-            isValid: (hFinal.hCity === 0 && hFinal.hStep === 0 && hFinal.hRegion === 0),
+            isValid: (hFinal.hCity === 0 && hFinal.hStep === 0),
             tourIndices: globalBestTour,
             cityNames: cityNames,
             totalDistance: hFinal.hCost,
