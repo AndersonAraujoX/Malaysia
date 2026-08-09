@@ -16,9 +16,6 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <!-- Leaflet JS CDN -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
@@ -29,73 +26,70 @@
         <div class="brand">
             <div class="brand-logo">🇲🇾</div>
             <div>
-                <h1 class="brand-title">TSP Malaysia (20 Cities)</h1>
-                <p class="brand-subtitle">Hamiltonian Energy Minimization (H = H_cost + A·H_city + B·H_step + C·H_region)</p>
+                <h1>Traveling Salesperson <span>- 20 Major Cities of Malaysia</span></h1>
+                <p>Simulated Annealing Hamiltonian Solver for Traveling Salesperson Optimization</p>
             </div>
         </div>
-        <div class="nav-badges">
-            <div class="badge badge-quantum">
-                <span>⚡</span> <span id="qubitCountBadge">20 Cities | Hamiltonian Solver</span>
-            </div>
-            <div class="badge badge-malaysia">
-                <span>🇲🇾</span> <span>20 Malaysian Cities</span>
-            </div>
+        <div class="status-badge" id="qubitCountBadge">
+            20 Cities | Hamiltonian Solver
         </div>
     </header>
 
-    <!-- Main Application Container -->
+    <!-- Main Container Layout -->
     <main class="app-container">
         
-        <!-- Sidebar Controls -->
+        <!-- Left Sidebar: City Selection & Hamiltonian Controls -->
         <aside class="sidebar">
             
             <!-- City Selection Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h2 class="card-title">📍 Malaysian Cities (20)</h2>
+                    <h3>📍 Select Cities (20 Major Cities)</h3>
                 </div>
-
+                
                 <div class="city-list" id="cityList">
-                    <!-- Cities injected by js/app.js -->
+                    <!-- City Items Injected Dynamically by JS -->
                 </div>
             </div>
 
-            <!-- Hamiltonian Multipliers Card -->
+            <!-- Hamiltonian Operator Parameters Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h2 class="card-title">⚛️ Hamiltonian Multipliers (A, B, C)</h2>
+                    <h3>⚛️ Hamiltonian Multipliers (A, B, C)</h3>
                 </div>
-                <div class="control-group">
-                    <div>
-                        <div class="input-label">
-                            <span>A (City Uniqueness Penalty):</span>
-                            <span class="val-badge" id="valA">1000</span>
-                        </div>
-                        <input type="range" id="paramA" min="0" max="5000" step="100" value="1000">
-                    </div>
-                    <div style="margin-top: 8px;">
-                        <div class="input-label">
-                            <span>B (Step Uniqueness Penalty):</span>
-                            <span class="val-badge" id="valB">1000</span>
-                        </div>
-                        <input type="range" id="paramB" min="0" max="5000" step="100" value="1000">
-                    </div>
-                    <div style="margin-top: 8px;">
-                        <div class="input-label">
-                            <span>C (Regional Transit Penalty):</span>
-                            <span class="val-badge" id="valC">500</span>
-                        </div>
-                        <input type="range" id="paramC" min="0" max="2000" step="50" value="500">
-                    </div>
 
-                    <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px; line-height: 1.3;">
-                        When <b>A=0, B=0, C=0</b>, constraint penalties are ignored and SA may converge to invalid or high-crossing routes. Setting high coefficients forces SA to strictly avoid violations.
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>A (City Uniqueness Penalty):</span>
+                        <span class="slider-value" id="valA">1000</span>
                     </div>
-
-                    <button id="runBtn" class="btn-primary" style="margin-top: 10px;">
-                        <span>⚡ Execute Routing Model</span>
-                    </button>
+                    <input type="range" id="paramA" min="0" max="5000" step="100" value="1000">
                 </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>B (Step Uniqueness Penalty):</span>
+                        <span class="slider-value" id="valB">1000</span>
+                    </div>
+                    <input type="range" id="paramB" min="0" max="5000" step="100" value="1000">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>C (Regional Transit Penalty):</span>
+                        <span class="slider-value" id="valC">500</span>
+                    </div>
+                    <input type="range" id="paramC" min="0" max="2000" step="50" value="500">
+                </div>
+
+                <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
+                    When <b>A=0, B=0, C=0</b>, constraint penalties are ignored and SA may converge to invalid or high-crossing routes. Setting high coefficients forces SA to strictly avoid violations.
+                </p>
+
+                <!-- Action Button -->
+                <button id="runBtn" class="btn-primary">
+                    <span>⚡ EXECUTE ROUTING MODEL</span>
+                </button>
             </div>
 
         </aside>
@@ -118,55 +112,35 @@
                 <div id="map"></div>
             </div>
 
-            <!-- Inspector & Diagnostics -->
+            <!-- Inspector & Diagnostics: Tour Table -->
             <div class="glass-card">
-                <div class="tabs-header">
-                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Hamiltonian Energy Convergence</button>
-                    <button class="tab-btn" data-tab="tabTable">📋 Ground State Eigenvalues & Route</button>
+                <h3 style="color: var(--text-main); font-size: 1.05rem; margin-bottom: 15px; font-weight: 600;">📋 Ground State Eigenvalues & Route</h3>
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>State</th>
+                                <th>H_cost (km)</th>
+                                <th>A·H_city</th>
+                                <th>B·H_step</th>
+                                <th>C·H_region</th>
+                                <th>Total ⟨H⟩</th>
+                                <th>Complete City Sequence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
                 </div>
-
-                <!-- Tab 1: Analytics & Convergence -->
-                <div class="tab-content active" id="tabAnalytics">
-                    <div class="charts-grid">
-                        <div style="grid-column: 1 / -1;">
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Hamiltonian Expectation Value ⟨H⟩ vs Thermal Step</h4>
-                            <div class="chart-container" style="height: 300px;">
-                                <canvas id="energyChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 2: Detailed Tour Table -->
-                <div class="tab-content" id="tabTable">
-                    <div class="table-responsive">
-                        <table class="custom-table">
-                            <thead>
-                                <tr>
-                                    <th>Model</th>
-                                    <th>State</th>
-                                    <th>H_cost (km)</th>
-                                    <th>A·H_city</th>
-                                    <th>B·H_step</th>
-                                    <th>C·H_region</th>
-                                    <th>Total ⟨H⟩</th>
-                                    <th>Complete City Sequence</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <!-- Injected by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
             </div>
 
         </section>
 
     </main>
 
-    <!-- Custom Scripts -->
+    <!-- JS Application Scripts -->
     <script src="js/cities.js"></script>
     <script src="js/solver.js"></script>
     <script src="js/app.js"></script>

@@ -1,5 +1,5 @@
 /**
- * Main Web Application Controller & Leaflet / Visualizations Integration
+ * Main Web Application Controller & Leaflet Integration
  * Traveling Salesperson Routing Model with Explicit Hamiltonian Multipliers (A, B, C)
  */
 
@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         markersMap: new Map(),
         classicalPolyline: null,
         saPolyline: null,
-        energyChart: null,
         lastSaResult: null,
         lastClassicalResult: null
     };
@@ -31,8 +30,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qubitCountBadge = document.getElementById('qubitCountBadge');
     const statQuantumDist = document.getElementById('statQuantumDist');
     const statClassicalDist = document.getElementById('statClassicalDist');
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
 
     // 1. Initialize Leaflet Dark Map
     function initMap() {
@@ -148,50 +145,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         paramCSlider.addEventListener('input', (e) => valCEl.textContent = e.target.value);
     }
 
-    // 3. Setup Tabs
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            const targetId = btn.dataset.tab;
-            const targetEl = document.getElementById(targetId);
-            if (targetEl) targetEl.classList.add('active');
-        });
-    });
-
-    // 4. Initialize Chart.js Instance
-    function initCharts() {
-        const energyCanvas = document.getElementById('energyChart');
-        if (!energyCanvas) return;
-        const energyCtx = energyCanvas.getContext('2d');
-        state.energyChart = new Chart(energyCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Hamiltonian Expectation ⟨H⟩',
-                    data: [],
-                    borderColor: '#00f2fe',
-                    backgroundColor: 'rgba(0, 242, 254, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    borderWidth: 2,
-                    pointRadius: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: '#94a3b8' } } },
-                scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-                }
-            }
-        });
-    }
-
     // Helper: Safely resolve sample object
     function getSampleObject(saResult) {
         if (!saResult) return null;
@@ -204,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return null;
     }
 
-    // 5. Update Map Polylines
+    // 3. Update Map Polylines
     function drawRoutes(classicalResult, saResult, selectedCities) {
         if (state.classicalPolyline) state.map.removeLayer(state.classicalPolyline);
         if (state.saPolyline) state.map.removeLayer(state.saPolyline);
@@ -247,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 6. Execute Solver Runner
+    // 4. Execute Solver Runner
     async function runOptimization() {
         if (runBtn) {
             runBtn.disabled = true;
@@ -270,21 +223,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 2. Initialize Routing Optimization Engine with Explicit Hamiltonian Parameters
         const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, pA, pB, pC);
 
-        if (state.energyChart) {
-            state.energyChart.data.labels = [];
-            state.energyChart.data.datasets[0].data = [];
-            state.energyChart.update();
-        }
-
         // 3. Run Simulation
-        const solverRes = await solverEngine.runSolver(maxIter, (step, currentEnergy) => {
-            if (state.energyChart) {
-                state.energyChart.data.labels.push(`Step ${step}`);
-                state.energyChart.data.datasets[0].data.push(currentEnergy);
-                state.energyChart.update();
-            }
-        });
-
+        const solverRes = await solverEngine.runSolver(maxIter);
         state.lastSaResult = solverRes;
 
         // 4. Update Comparison Table
@@ -331,7 +271,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initMap();
     renderCityList();
     updateBadge();
-    initCharts();
 
     setTimeout(() => {
         runOptimization();
