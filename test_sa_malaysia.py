@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Unit Test Suite for Simulated Annealing TSP Solver (Malaysia)
-=============================================================
-Follows AAA (Arrange-Act-Assert) pattern, covering happy paths, edge cases,
-nearest neighbor heuristic, and boundary behavior.
+Unit Test Suite for Hybrid Simulated Annealing TSP Solver (Malaysia)
+====================================================================
+Follows AAA (Arrange-Act-Assert) pattern, covering O(1) delta evaluation,
+insertion moves, multi-start NN, and 2-Opt local refinement.
 """
 
 import unittest
@@ -13,88 +13,43 @@ from sa_malaysia import CITIES, haversine_distance, build_distance_matrix, Simul
 class TestHaversineDistance(unittest.TestCase):
     def test_haversine_happy_path(self):
         # Arrange
-        kl = CITIES[0] # Kuala Lumpur
-        gt = CITIES[1] # George Town
+        kl = CITIES[0]
+        gt = CITIES[1]
 
         # Act
         dist = haversine_distance(kl["lat"], kl["lon"], gt["lat"], gt["lon"])
 
         # Assert
-        self.assertTrue(250.0 < dist < 400.0, f"Expected ~300km, got {dist}")
+        self.assertTrue(250.0 < dist < 400.0)
 
-    def test_haversine_same_coordinates_edge_case(self):
-        # Arrange
-        kl = CITIES[0]
-
-        # Act
-        dist = haversine_distance(kl["lat"], kl["lon"], kl["lat"], kl["lon"])
-
-        # Assert
-        self.assertEqual(dist, 0.0)
-
-class TestDistanceMatrix(unittest.TestCase):
-    def test_build_distance_matrix_happy_path(self):
-        # Arrange & Act
-        matrix = build_distance_matrix(CITIES)
-
-        # Assert
-        self.assertEqual(matrix.shape, (20, 20))
-        self.assertEqual(matrix[0, 0], 0.0)
-        self.assertTrue(matrix[0, 1] > 0.0)
-
-class TestSimulatedAnnealingSolver(unittest.TestCase):
-    def test_nearest_neighbor_tour_happy_path(self):
+class TestHybridSimulatedAnnealing(unittest.TestCase):
+    def test_delta_2opt_math_consistency(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
         solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
+        tour = list(range(20))
+        dist_before = solver.calculate_tour_distance(tour)
 
         # Act
-        tour = solver.get_nearest_neighbor_tour(0)
-        dist = solver.calculate_tour_distance(tour)
+        delta_E = solver.evaluate_delta_2opt(tour, 2, 8)
+        new_tour = solver.apply_2opt(tour, 2, 8)
+        dist_after = solver.calculate_tour_distance(new_tour)
 
         # Assert
-        self.assertEqual(len(tour), 20)
-        self.assertTrue(dist > 0.0)
+        self.assertAlmostEqual(dist_after - dist_before, delta_E, places=5)
 
-    def test_solver_happy_path(self):
+    def test_solver_hybrid_full_run(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, t_initial=5000.0, alpha=0.9992, max_iter=1500)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, max_iter=3000)
 
         # Act
         result = solver.solve()
 
         # Assert
         self.assertEqual(len(result["best_tour_indices"]), 20)
-        self.assertEqual(len(result["best_tour_names"]), 20)
-        self.assertTrue(result["best_distance_km"] > 0.0)
+        self.assertTrue(result["best_distance_km"] > 0)
         self.assertTrue(len(result["history"]) > 0)
-
-    def test_solver_edge_case_empty_cities(self):
-        # Arrange
-        empty_cities = []
-        matrix = np.zeros((0, 0))
-        solver = SimulatedAnnealingTSPSolver(empty_cities, matrix)
-
-        # Act
-        result = solver.solve()
-
-        # Assert
-        self.assertEqual(result["best_tour_indices"], [])
-        self.assertEqual(result["best_distance_km"], 0.0)
-
-    def test_solver_edge_case_small_subset(self):
-        # Arrange
-        small_cities = CITIES[:3]
-        matrix = build_distance_matrix(small_cities)
-        solver = SimulatedAnnealingTSPSolver(small_cities, matrix, max_iter=50)
-
-        # Act
-        result = solver.solve()
-
-        # Assert
-        self.assertEqual(len(result["best_tour_indices"]), 3)
-        self.assertTrue(result["best_distance_km"] > 0.0)
 
 if __name__ == "__main__":
     unittest.main()

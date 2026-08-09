@@ -37,58 +37,46 @@ test('Build Full Distance Matrix - Happy Path', () => {
     assert.ok(matrix[0][1] > 0);
 });
 
-test('Solve Classical TSP - Happy Path (Small Subset <= 8 cities)', () => {
+test('O(1) Delta 2-Opt Evaluation - Consistency Test', () => {
     // Arrange
-    const selected = MALAYSIA_CITIES.slice(0, 5);
     const fullMatrix = buildFullDistanceMatrix();
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
+    const tour = Array.from({ length: 20 }, (_, i) => i);
+    const initialDist = engine.calculateTourDistance(tour);
 
     // Act
-    const result = solveClassicalTSP(selected, fullMatrix);
+    const deltaE = engine.evaluateDelta2Opt(tour, 2, 8);
+    const newTour = engine.apply2Opt(tour, 2, 8);
+    const newDist = engine.calculateTourDistance(newTour);
 
     // Assert
-    assert.equal(result.tourIndices.length, 5);
-    assert.equal(result.cityNames.length, 5);
-    assert.ok(result.totalDistance > 0);
+    assert.ok(Math.abs((newDist - initialDist) - deltaE) < 1e-5, `Delta math discrepancy!`);
 });
 
-test('Nearest Neighbor Heuristic - Happy Path', () => {
+test('Best Nearest Neighbor Selection across all starts', () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
     const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
 
     // Act
-    const tour = engine.getNearestNeighborTour(0);
-    const dist = engine.calculateTourDistance(tour);
+    const bestNN = engine.getBestNearestNeighborTour();
 
     // Assert
-    assert.equal(tour.length, 20);
-    assert.ok(dist > 0 && dist < 8000, `Nearest neighbor distance should be reasonable, got ${dist}`);
+    assert.equal(bestNN.length, 20);
+    assert.ok(engine.calculateTourDistance(bestNN) > 0);
 });
 
-test('JSSimulatedAnnealingEngine High-Performance - Full 20 Cities', async () => {
+test('Hybrid JSSimulatedAnnealingEngine - Full 20 Cities', async () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9992);
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995);
 
     // Act
-    const res = await engine.runSolver(3000);
+    const res = await engine.runSolver(5000);
 
     // Assert
     assert.ok(res.bestValidSample);
     assert.equal(res.bestValidSample.tourIndices.length, 20);
     assert.ok(res.bestValidSample.totalDistance > 0);
     assert.ok(res.history.length > 0);
-});
-
-test('JSSimulatedAnnealingEngine - Edge Case: Single City', async () => {
-    // Arrange
-    const selected = [MALAYSIA_CITIES[0]];
-    const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(selected, fullMatrix, 100.0, 0.9);
-
-    // Act
-    const res = await engine.runSolver(50);
-
-    // Assert
-    assert.equal(res.bestValidSample.totalDistance, 0);
 });

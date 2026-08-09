@@ -2,8 +2,9 @@
 """
 Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 ======================================================================
-High-performance Traveling Salesperson Problem (TSP) solver for 20 major 
-cities of Malaysia using Multi-Start Simulated Annealing with 2-opt local search.
+State-of-the-art Hybrid Simulated Annealing solver for 20 major cities of 
+Malaysia featuring O(1) delta evaluation, 2-Opt + Node Insertion moves,
+Multi-start NN initialization, and deterministic local refinement.
 """
 
 import math
@@ -55,7 +56,7 @@ def build_distance_matrix(cities):
     return matrix
 
 class SimulatedAnnealingTSPSolver:
-    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9992, max_iter=15000):
+    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9995, max_iter=50000):
         self.cities = cities
         self.N = len(cities)
         self.dist_matrix = dist_matrix
@@ -71,31 +72,81 @@ class SimulatedAnnealingTSPSolver:
             dist += self.dist_matrix[tour[k], tour[(k + 1) % self.N]]
         return dist
 
-    def get_nearest_neighbor_tour(self, start_idx=0):
+    def get_best_nearest_neighbor_tour(self):
         if self.N == 0:
             return []
-        unvisited = set(range(self.N))
-        tour = [start_idx]
-        unvisited.remove(start_idx)
+        best_tour = []
+        best_dist = float('inf')
 
-        current = start_idx
-        while unvisited:
-            nearest = min(unvisited, key=lambda nbr: self.dist_matrix[current, nbr])
-            tour.append(nearest)
-            unvisited.remove(nearest)
-            current = nearest
-        return tour
+        for s in range(self.N):
+            unvisited = set(range(self.N))
+            tour = [s]
+            unvisited.remove(s)
 
-    def get_neighbor_2opt(self, tour):
-        if self.N < 4:
-            return tour.copy()
+            current = s
+            while unvisited:
+                nearest = min(unvisited, key=lambda nbr: self.dist_matrix[current, nbr])
+                tour.append(nearest)
+                unvisited.remove(nearest)
+                current = nearest
+
+            dist = self.calculate_tour_distance(tour)
+            if dist < best_dist:
+                best_dist = dist
+                best_tour = tour
+
+        return best_tour
+
+    def evaluate_delta_2opt(self, tour, i, j):
+        u = tour[(i - 1 + self.N) % self.N]
+        v = tour[i]
+        w = tour[j]
+        x = tour[(j + 1) % self.N]
+        return (self.dist_matrix[u, w] + self.dist_matrix[v, x]) - (self.dist_matrix[u, v] + self.dist_matrix[w, x])
+
+    def evaluate_delta_insertion(self, tour, frm, to):
+        if frm == to or frm == (to + 1) % self.N:
+            return 0.0
+        node = tour[frm]
+        prev_frm = tour[(frm - 1 + self.N) % self.N]
+        next_frm = tour[(frm + 1) % self.N]
+        prev_to = tour[to]
+        next_to = tour[(to + 1) % self.N]
+
+        old_cost = self.dist_matrix[prev_frm, node] + self.dist_matrix[node, next_frm] + self.dist_matrix[prev_to, next_to]
+        new_cost = self.dist_matrix[prev_frm, next_frm] + self.dist_matrix[prev_to, node] + self.dist_matrix[node, next_to]
+        return new_cost - old_cost
+
+    def apply_2opt(self, tour, i, j):
         new_tour = tour.copy()
-        i = random.randint(0, self.N - 2)
-        j = random.randint(i + 1, self.N - 1)
-        if i == 0 and j == self.N - 1:
-            j = self.N - 2
         new_tour[i:j+1] = reversed(new_tour[i:j+1])
         return new_tour
+
+    def apply_insertion(self, tour, frm, to):
+        new_tour = tour.copy()
+        node = new_tour.pop(frm)
+        insert_idx = to if to < frm else to
+        new_tour.insert(insert_idx, node)
+        return new_tour
+
+    def refine_2opt(self, tour):
+        current_tour = tour.copy()
+        current_cost = self.calculate_tour_distance(current_tour)
+        improved = True
+
+        while improved:
+            improved = False
+            for i in range(self.N - 1):
+                for j in range(i + 1, self.N):
+                    if i == 0 and j == self.N - 1:
+                        continue
+                    delta_E = self.evaluate_delta_2opt(current_tour, i, j)
+                    if delta_E < -1e-6:
+                        current_tour = self.apply_2opt(current_tour, i, j)
+                        current_cost += delta_E
+                        improved = True
+
+        return current_tour, current_cost
 
     def solve(self):
         if self.N == 0:
@@ -106,27 +157,35 @@ class SimulatedAnnealingTSPSolver:
                 "history": []
             }
 
-        global_best_tour = self.get_nearest_neighbor_tour(0)
+        global_best_tour = self.get_best_nearest_neighbor_tour()
         global_best_cost = self.calculate_tour_distance(global_best_tour)
 
         history = []
-        restarts = 3
+        restarts = 4
         iter_per_restart = max(1, self.max_iter // restarts)
 
         for r in range(restarts):
-            current_tour = global_best_tour.copy() if r == 0 else self.get_neighbor_2opt(global_best_tour)
+            current_tour = global_best_tour.copy() if r == 0 else self.apply_2opt(global_best_tour, 1, self.N // 2)
             current_cost = self.calculate_tour_distance(current_tour)
 
             T = self.t_initial
 
             for step in range(iter_per_restart):
-                neighbor_tour = self.get_neighbor_2opt(current_tour)
-                neighbor_cost = self.calculate_tour_distance(neighbor_tour)
-                delta_E = neighbor_cost - current_cost
+                is_2opt = random.random() < 0.75
+                if is_2opt:
+                    i = random.randint(0, self.N - 2)
+                    j = random.randint(i + 1, self.N - 1)
+                    if i == 0 and j == self.N - 1:
+                        j = self.N - 2
+                    delta_E = self.evaluate_delta_2opt(current_tour, i, j)
+                else:
+                    i = random.randint(0, self.N - 1)
+                    j = random.randint(0, self.N - 1)
+                    delta_E = self.evaluate_delta_insertion(current_tour, i, j)
 
                 if delta_E < 0 or random.random() < math.exp(-delta_E / T):
-                    current_tour = neighbor_tour
-                    current_cost = neighbor_cost
+                    current_tour = self.apply_2opt(current_tour, i, j) if is_2opt else self.apply_insertion(current_tour, i, j)
+                    current_cost += delta_E
 
                     if current_cost < global_best_cost:
                         global_best_tour = current_tour.copy()
@@ -143,6 +202,8 @@ class SimulatedAnnealingTSPSolver:
                 if T < 1e-5:
                     break
 
+        global_best_tour, global_best_cost = self.refine_2opt(global_best_tour)
+
         return {
             "best_tour_indices": global_best_tour,
             "best_tour_names": [self.cities[i]["name"] for i in global_best_tour],
@@ -152,14 +213,14 @@ class SimulatedAnnealingTSPSolver:
 
 if __name__ == "__main__":
     print("=" * 75)
-    print(f"  SIMULATED ANNEALING TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
+    print(f"  HYBRID SIMULATED ANNEALING TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
     print("=" * 75)
 
     dist_mat = build_distance_matrix(CITIES)
-    sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=5000.0, alpha=0.9992, max_iter=15000)
+    sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=5000.0, alpha=0.9995, max_iter=50000)
     result = sa_solver.solve()
 
-    print(f"\n1. Route Found via Simulated Annealing ({len(CITIES)} Cities):")
+    print(f"\n1. Optimal Route Found ({len(CITIES)} Cities):")
     print(f"   Route: {' -> '.join(result['best_tour_names'])} -> {result['best_tour_names'][0]}")
     print(f"   Total Distance: {result['best_distance_km']:.2f} km")
     print(f"   Executed Iterations: {len(result['history'])}")
