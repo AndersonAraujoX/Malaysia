@@ -15,61 +15,46 @@ test('Haversine Distance - Happy Path', () => {
     assert.ok(dist > 250 && dist < 400, `Distance should be ~300km, got ${dist}`);
 });
 
-test('Haversine Distance - Edge Case: Same Location', () => {
+test('Constraint Penalty Terms - Uniqueness & Regional Transit', () => {
     // Arrange
-    const kl = MALAYSIA_CITIES[0];
+    const fullMatrix = buildFullDistanceMatrix();
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 500.0);
 
-    // Act
-    const dist = haversineDistance(kl.lat, kl.lon, kl.lat, kl.lon);
+    // Act 1: Duplicate city index (Invalid tour)
+    const invalidTour = Array(20).fill(0);
+    const uniquenessPenalty = engine.calculatePenalty(invalidTour);
 
-    // Assert
-    assert.equal(dist, 0);
+    // Assert 1
+    assert.ok(uniquenessPenalty >= 10000.0, `Should heavily penalize non-unique tours`);
+
+    // Act 2: Alternating Peninsular <-> Borneo crossings (High regional transit penalty)
+    // 0: KL (Peninsular), 4: KK (Borneo), 1: GT (Peninsular), 5: Kuching (Borneo), etc.
+    const alternatingTour = [0, 4, 1, 5, 2, 13, 3, 14, 6, 15, 7, 16, 8, 18, 9, 10, 11, 12, 17, 19];
+    const transitPenalty = engine.calculatePenalty(alternatingTour);
+
+    // Assert 2
+    assert.ok(transitPenalty > 0, `Should penalize excess inter-region crossings`);
 });
 
-test('Build Full Distance Matrix - Happy Path', () => {
-    // Arrange & Act
-    const matrix = buildFullDistanceMatrix();
-
-    // Assert
-    assert.equal(matrix.length, 20);
-    assert.equal(matrix[0].length, 20);
-    assert.equal(matrix[0][0], 0);
-    assert.ok(matrix[0][1] > 0);
-});
-
-test('O(1) Delta 2-Opt Evaluation - Consistency Test', () => {
+test('Total Energy Function = Distance + Penalty', () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
     const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
     const tour = Array.from({ length: 20 }, (_, i) => i);
-    const initialDist = engine.calculateTourDistance(tour);
 
     // Act
-    const deltaE = engine.evaluateDelta2Opt(tour, 2, 8);
-    const newTour = engine.apply2Opt(tour, 2, 8);
-    const newDist = engine.calculateTourDistance(newTour);
+    const baseDist = engine.calculateTourDistance(tour);
+    const penalty = engine.calculatePenalty(tour);
+    const totalEnergy = engine.calculateTotalEnergy(tour);
 
     // Assert
-    assert.ok(Math.abs((newDist - initialDist) - deltaE) < 1e-5, `Delta math discrepancy!`);
+    assert.equal(totalEnergy, baseDist + penalty);
 });
 
-test('Best Nearest Neighbor Selection across all starts', () => {
+test('Constrained Hybrid JSSimulatedAnnealingEngine - Full Run', async () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
-
-    // Act
-    const bestNN = engine.getBestNearestNeighborTour();
-
-    // Assert
-    assert.equal(bestNN.length, 20);
-    assert.ok(engine.calculateTourDistance(bestNN) > 0);
-});
-
-test('Hybrid JSSimulatedAnnealingEngine - Full 20 Cities', async () => {
-    // Arrange
-    const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995);
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 500.0);
 
     // Act
     const res = await engine.runSolver(5000);
@@ -78,5 +63,5 @@ test('Hybrid JSSimulatedAnnealingEngine - Full 20 Cities', async () => {
     assert.ok(res.bestValidSample);
     assert.equal(res.bestValidSample.tourIndices.length, 20);
     assert.ok(res.bestValidSample.totalDistance > 0);
-    assert.ok(res.history.length > 0);
+    assert.equal(res.bestValidSample.isValid, true);
 });

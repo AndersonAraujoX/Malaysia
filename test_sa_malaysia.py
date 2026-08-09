@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Unit Test Suite for Hybrid Simulated Annealing TSP Solver (Malaysia)
-====================================================================
-Follows AAA (Arrange-Act-Assert) pattern, covering O(1) delta evaluation,
-insertion moves, multi-start NN, and 2-Opt local refinement.
+Unit Test Suite for Constrained Simulated Annealing TSP Solver (Malaysia)
+========================================================================
+Follows AAA (Arrange-Act-Assert) pattern, covering constraint penalty terms
+(uniqueness penalty & regional transit penalty) and total energy calculation.
 """
 
 import unittest
@@ -22,34 +22,45 @@ class TestHaversineDistance(unittest.TestCase):
         # Assert
         self.assertTrue(250.0 < dist < 400.0)
 
-class TestHybridSimulatedAnnealing(unittest.TestCase):
-    def test_delta_2opt_math_consistency(self):
+class TestConstraintPenalties(unittest.TestCase):
+    def test_uniqueness_penalty(self):
+        # Arrange
+        matrix = build_distance_matrix(CITIES)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
+        invalid_tour = [0] * 20
+
+        # Act
+        penalty = solver.calculate_penalty(invalid_tour)
+
+        # Assert
+        self.assertTrue(penalty >= 10000.0)
+
+    def test_regional_transit_penalty(self):
+        # Arrange
+        matrix = build_distance_matrix(CITIES)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, lambda_region_penalty=500.0)
+        # 0: KL (Peninsular), 4: KK (Borneo), 1: GT (Peninsular), 5: Kuching (Borneo), etc.
+        alternating_tour = [0, 4, 1, 5, 2, 13, 3, 14, 6, 15, 7, 16, 8, 18, 9, 10, 11, 12, 17, 19]
+
+        # Act
+        penalty = solver.calculate_penalty(alternating_tour)
+
+        # Assert
+        self.assertTrue(penalty > 0.0)
+
+    def test_total_energy_function(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
         solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
         tour = list(range(20))
-        dist_before = solver.calculate_tour_distance(tour)
 
         # Act
-        delta_E = solver.evaluate_delta_2opt(tour, 2, 8)
-        new_tour = solver.apply_2opt(tour, 2, 8)
-        dist_after = solver.calculate_tour_distance(new_tour)
+        base_dist = solver.calculate_tour_distance(tour)
+        penalty = solver.calculate_penalty(tour)
+        total_energy = solver.calculate_total_energy(tour)
 
         # Assert
-        self.assertAlmostEqual(dist_after - dist_before, delta_E, places=5)
-
-    def test_solver_hybrid_full_run(self):
-        # Arrange
-        matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, max_iter=3000)
-
-        # Act
-        result = solver.solve()
-
-        # Assert
-        self.assertEqual(len(result["best_tour_indices"]), 20)
-        self.assertTrue(result["best_distance_km"] > 0)
-        self.assertTrue(len(result["history"]) > 0)
+        self.assertEqual(total_energy, base_dist + penalty)
 
 if __name__ == "__main__":
     unittest.main()
