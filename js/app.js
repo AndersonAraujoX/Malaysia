@@ -19,10 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // DOM Element References
     const cityListEl = document.getElementById('cityList');
-    const tInitialSlider = document.getElementById('tInitial');
-    const tValEl = document.getElementById('tVal');
-    const maxIterSlider = document.getElementById('maxIter');
-    const maxIterValEl = document.getElementById('maxIterVal');
     const runBtn = document.getElementById('runBtn');
     const qubitCountBadge = document.getElementById('qubitCountBadge');
     const statQuantumDist = document.getElementById('statQuantumDist');
@@ -115,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.addEventListener('click', () => {
                 if (state.selectedCityIds.has(city.id)) {
                     if (state.selectedCityIds.size <= 3) {
-                        alert("A aplicação necessita de no mínimo 3 cidades para rodar o TSP.");
+                        alert("The application requires at least 3 cities to run the TSP.");
                         return;
                     }
                     state.selectedCityIds.delete(city.id);
@@ -133,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateBadge() {
         const numSelected = state.selectedCityIds.size;
-        qubitCountBadge.textContent = `${numSelected} Cidades | Simulated Annealing (Metaheurística)`;
+        qubitCountBadge.textContent = `${numSelected} Cities | Simulated Annealing`;
     }
 
     if (btnSelectMain7) {
@@ -154,19 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 3. Setup Sliders & Tabs
-    if (tInitialSlider) {
-        tInitialSlider.addEventListener('input', (e) => {
-            if (tValEl) tValEl.textContent = `${e.target.value} K`;
-        });
-    }
-
-    if (maxIterSlider) {
-        maxIterSlider.addEventListener('input', (e) => {
-            if (maxIterValEl) maxIterValEl.textContent = e.target.value;
-        });
-    }
-
+    // 3. Setup Tabs
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             tabBtns.forEach(b => b.classList.remove('active'));
@@ -188,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Energia / Custo da Rota (km)',
+                    label: 'Energy / Route Distance (km)',
                     data: [],
                     borderColor: '#00f2fe',
                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
@@ -247,25 +231,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             statQuantumDist.textContent = `${saResult.bestValidSample.totalDistance.toFixed(1)} km`;
         } else {
-            statQuantumDist.textContent = "Sem rota válida";
+            statQuantumDist.textContent = "No valid route";
         }
     }
 
     // 6. Execute Solver Runner
     async function runOptimization() {
-        runBtn.disabled = true;
-        runBtn.innerHTML = `<span>⏳ Otimizando...</span>`;
+        if (runBtn) {
+            runBtn.disabled = true;
+            runBtn.innerHTML = `<span>⏳ Optimizing...</span>`;
+        }
 
         const selectedCities = MALAYSIA_CITIES.filter(c => state.selectedCityIds.has(c.id));
-        const tInit = tInitialSlider ? parseInt(tInitialSlider.value, 10) : 1000;
-        const maxIter = maxIterSlider ? parseInt(maxIterSlider.value, 10) : 1000;
+        const tInit = 2000.0;
+        const maxIter = 5000;
+        const alpha = 0.998;
 
         // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
-        // 2. Initialize Simulated Annealing Engine
-        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, 0.995);
+        // 2. Initialize Simulated Annealing Engine with default parameters
+        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha);
 
         if (state.energyChart) {
             state.energyChart.data.labels = [];
@@ -276,7 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 3. Run Simulation
         const solverRes = await solverEngine.runSolver(maxIter, (step, currentEnergy) => {
             if (state.energyChart) {
-                state.energyChart.data.labels.push(`Passo ${step}`);
+                state.energyChart.data.labels.push(`Step ${step}`);
                 state.energyChart.data.datasets[0].data.push(currentEnergy);
                 state.energyChart.update();
             }
@@ -284,8 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         state.lastSaResult = solverRes;
 
-        // 4. Update Comparison Table matching exact header column order:
-        // Algoritmo | Status Rota | Distância Total (km) | Temperatura Final (K) | Sequência Completa das Cidades
+        // 4. Update Comparison Table
         const tableBody = document.getElementById('tableBody');
         if (tableBody) {
             tableBody.innerHTML = '';
@@ -295,7 +281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const finalTemp = solverRes.optimalParams[0] ? solverRes.optimalParams[0].toFixed(2) : '0.00';
                 tr.innerHTML = `
                     <td><code style="color:#00f2fe;">Simulated Annealing</code></td>
-                    <td><span class="tag-valid">VÁLIDO</span></td>
+                    <td><span class="tag-valid">VALID</span></td>
                     <td style="font-weight: 700; color: #00f2fe;">${sample.totalDistance.toFixed(1)} km</td>
                     <td style="font-family: var(--font-mono);">${finalTemp} K</td>
                     <td style="font-size:0.82rem; color:#94a3b8; line-height: 1.4;">${sample.cityNames.join(' ➔ ')}</td>
@@ -307,11 +293,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 5. Update Map Routes
         drawRoutes(classicalRes, solverRes, selectedCities);
 
-        runBtn.disabled = false;
-        runBtn.innerHTML = `<span>⚡ Executar Simulated Annealing</span>`;
+        if (runBtn) {
+            runBtn.disabled = false;
+            runBtn.innerHTML = `<span>⚡ Run Simulated Annealing</span>`;
+        }
     }
 
-    runBtn.addEventListener('click', runOptimization);
+    if (runBtn) {
+        runBtn.addEventListener('click', runOptimization);
+    }
 
     initMap();
     renderCityList();

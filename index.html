@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caixeiro Viajante - 20 Cidades da Malásia (Simulated Annealing)</title>
+    <title>Traveling Salesperson - 20 Cities of Malaysia (Simulated Annealing)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,16 +29,16 @@
         <div class="brand">
             <div class="brand-logo">🇲🇾</div>
             <div>
-                <h1 class="brand-title">TSP Malásia (20 Cidades)</h1>
-                <p class="brand-subtitle">Otimização do Problema do Caixeiro Viajante com Metaheurística de Simulated Annealing</p>
+                <h1 class="brand-title">TSP Malaysia (20 Cities)</h1>
+                <p class="brand-subtitle">Traveling Salesperson Problem Optimization using Simulated Annealing</p>
             </div>
         </div>
         <div class="nav-badges">
             <div class="badge badge-quantum">
-                <span>🔥</span> <span id="qubitCountBadge">20 Cidades | Simulated Annealing</span>
+                <span>🔥</span> <span id="qubitCountBadge">20 Cities | Simulated Annealing</span>
             </div>
             <div class="badge badge-malaysia">
-                <span>🇲🇾</span> <span>20 Cidades da Malásia</span>
+                <span>🇲🇾</span> <span>20 Malaysian Cities</span>
             </div>
         </div>
     </header>
@@ -52,44 +52,22 @@
             <!-- City Selection Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h2 class="card-title">📍 Cidades da Malásia (20)</h2>
+                    <h2 class="card-title">📍 Malaysian Cities (20)</h2>
                 </div>
 
                 <!-- Quick Selection Buttons -->
                 <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
-                    <button id="btnSelectMain7" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">7 Principais</button>
-                    <button id="btnSelectAll20" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(157, 78, 221, 0.15); color: #9d4edd; border: 1px solid rgba(157, 78, 221, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">Todas (20)</button>
+                    <button id="btnSelectMain7" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">7 Major</button>
+                    <button id="btnSelectAll20" style="flex: 1; padding: 6px 8px; border-radius: 6px; background: rgba(157, 78, 221, 0.15); color: #9d4edd; border: 1px solid rgba(157, 78, 221, 0.3); font-size: 0.75rem; font-weight: 600; cursor: pointer;">All (20)</button>
                 </div>
 
                 <div class="city-list" id="cityList">
                     <!-- Cities injected by js/app.js -->
                 </div>
-            </div>
 
-            <!-- Parameters Card -->
-            <div class="glass-card">
-                <div class="card-header">
-                    <h2 class="card-title">⚙️ Parâmetros do Resfriamento</h2>
-                </div>
-                <div class="control-group">
-                    <div>
-                        <div class="input-label">
-                            <span>Temperatura Inicial (T0):</span>
-                            <span class="val-badge" id="tVal">1000 K</span>
-                        </div>
-                        <input type="range" id="tInitial" min="100" max="5000" step="100" value="1000">
-                    </div>
-                    <div>
-                        <div class="input-label">
-                            <span>Iterações / Passos de Busca:</span>
-                            <span class="val-badge" id="maxIterVal">1000</span>
-                        </div>
-                        <input type="range" id="maxIter" min="100" max="5000" step="100" value="1000">
-                    </div>
-                    <button id="runBtn" class="btn-primary">
-                        <span>⚡ Executar Simulated Annealing</span>
-                    </button>
-                </div>
+                <button id="runBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">
+                    <span>⚡ Run Simulated Annealing</span>
+                </button>
             </div>
 
         </aside>
@@ -102,11 +80,11 @@
                 <div class="map-stats-overlay">
                     <div class="stat-pill stat-quantum">
                         <span>Simulated Annealing:</span>
-                        <span id="statQuantumDist">Calculando...</span>
+                        <span id="statQuantumDist">Calculating...</span>
                     </div>
                     <div class="stat-pill stat-classical">
-                        <span>Exato Clássico:</span>
-                        <span id="statClassicalDist">Calculando...</span>
+                        <span>Exact Classical:</span>
+                        <span id="statClassicalDist">Calculating...</span>
                     </div>
                 </div>
                 <div id="map"></div>
@@ -115,15 +93,15 @@
             <!-- Inspector & Diagnostics -->
             <div class="glass-card">
                 <div class="tabs-header">
-                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Curva de Energia & Resfriamento</button>
-                    <button class="tab-btn" data-tab="tabTable">📋 Detalhes da Rota Otimizada</button>
+                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Energy & Cooling Curve</button>
+                    <button class="tab-btn" data-tab="tabTable">📋 Optimized Tour Details</button>
                 </div>
 
                 <!-- Tab 1: Analytics & Convergence -->
                 <div class="tab-content active" id="tabAnalytics">
                     <div class="charts-grid">
                         <div style="grid-column: 1 / -1;">
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Curva de Resfriamento & Convergência da Energia (Distância em km vs Passo)</h4>
+                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Cooling Curve & Energy Convergence (Distance in km vs Step)</h4>
                             <div class="chart-container" style="height: 300px;">
                                 <canvas id="energyChart"></canvas>
                             </div>
@@ -137,11 +115,11 @@
                         <table class="custom-table">
                             <thead>
                                 <tr>
-                                    <th>Algoritmo</th>
-                                    <th>Status Rota</th>
-                                    <th>Distância Total (km)</th>
-                                    <th>Temperatura Final (K)</th>
-                                    <th>Sequência Completa das Cidades</th>
+                                    <th>Algorithm</th>
+                                    <th>Tour Status</th>
+                                    <th>Total Distance (km)</th>
+                                    <th>Final Temperature (K)</th>
+                                    <th>Complete City Sequence</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">

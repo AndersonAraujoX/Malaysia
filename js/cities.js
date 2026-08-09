@@ -6,12 +6,12 @@ const MALAYSIA_CITIES = [
     {
         id: 0,
         name: "Kuala Lumpur",
-        state: "Território Federal",
+        state: "Federal Territory",
         region: "Peninsular",
         lat: 3.1390,
         lon: 101.6869,
         icon: "🏛️",
-        desc: "Capital nacional e maior metrópole do país. É o principal centro financeiro, comercial e cultural da Malásia, famosa por marcos como as Torres Petronas e as Batu Caves."
+        desc: "National capital and largest metropolis of Malaysia. Main financial, commercial, and cultural center of the country, famous for landmarks such as the Petronas Towers and Batu Caves."
     },
     {
         id: 1,
@@ -21,7 +21,7 @@ const MALAYSIA_CITIES = [
         lat: 5.4164,
         lon: 100.3327,
         icon: "🏮",
-        desc: "Capital do estado de Penang e Patrimônio Mundial da UNESCO. Polo industrial de semicondutores ('Vale do Silício do Oriente') e capital gastronômica."
+        desc: "Capital of Penang state and UNESCO World Heritage Site. Major semiconductor manufacturing hub ('Silicon Valley of the East') and culinary capital."
     },
     {
         id: 2,
@@ -31,37 +31,37 @@ const MALAYSIA_CITIES = [
         lat: 1.4927,
         lon: 103.7414,
         icon: "🌉",
-        desc: "Localizada no extremo sul, conectada a Singapura por ponte. Maior motor industrial e logístico do sul malaio."
+        desc: "Located in the extreme south, connected to Singapore by a causeway. Largest industrial and logistical engine of southern Malaysia."
     },
     {
         id: 3,
-        name: "Malaca (Melaka)",
+        name: "Melaka",
         state: "Melaka",
         region: "Peninsular",
         lat: 2.1896,
         lon: 102.2501,
         icon: "⛵",
-        desc: "Cidade histórica UNESCO. Teve papel central no comércio marítimo global de especiarias e preserva influências malaias e europeias."
+        desc: "Historic UNESCO city. Played a central role in the global maritime spice trade, preserving Malay and European heritage."
     },
     {
         id: 4,
         name: "Kota Kinabalu",
         state: "Sabah",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 5.9804,
         lon: 116.0735,
         icon: "🏔️",
-        desc: "Capital de Sabah na ilha de Bornéu. Porta de entrada para o turismo de natureza no Bornéu e Monte Kinabalu."
+        desc: "Capital of Sabah on Borneo island. Gateway to nature tourism in Borneo and Mount Kinabalu."
     },
     {
         id: 5,
         name: "Kuching",
         state: "Sarawak",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 1.5533,
         lon: 110.3592,
         icon: "🐱",
-        desc: "Capital de Sarawak (maior estado malaio em Bornéu). Coração econômico, administrativo e cultural do noroeste da ilha."
+        desc: "Capital of Sarawak (largest Malaysian state in Borneo). Economic, administrative, and cultural heart of northwestern Borneo."
     },
     {
         id: 6,
@@ -71,7 +71,7 @@ const MALAYSIA_CITIES = [
         lat: 4.5975,
         lon: 101.0901,
         icon: "⛰️",
-        desc: "Capital de Perak, desenvolvida durante o ciclo da mineração de estanho. Famosa por sua gastronomia e proximidade com Cameron Highlands."
+        desc: "Capital of Perak, developed during the tin mining boom. Famous for its cuisine and proximity to Cameron Highlands."
     },
     {
         id: 7,
@@ -81,7 +81,7 @@ const MALAYSIA_CITIES = [
         lat: 3.8077,
         lon: 103.3260,
         icon: "🏖️",
-        desc: "Capital de Pahang e maior centro comercial e portuário da Costa Leste da Malásia Peninsular, famosa por suas praias."
+        desc: "Capital of Pahang and largest commercial and port hub on the East Coast of Peninsular Malaysia, famous for its beaches."
     },
     {
         id: 8,
@@ -91,7 +91,7 @@ const MALAYSIA_CITIES = [
         lat: 5.3302,
         lon: 103.1408,
         icon: "🕌",
-        desc: "Capital real de Terengganu, famosa pela arquitetura islâmica clássica, artesanato de batik e proximidade com as Ilhas Redang."
+        desc: "Royal capital of Terengganu, famous for classic Islamic architecture, batik handicrafts, and proximity to the Redang Islands."
     },
     {
         id: 9,
@@ -101,7 +101,7 @@ const MALAYSIA_CITIES = [
         lat: 6.1254,
         lon: 102.2381,
         icon: "🎨",
-        desc: "Capital cultural de Kelantan, próxima à fronteira com a Tailândia, berço das tradições malaias de sombras (Wayang Kulit) e pipas (Wau)."
+        desc: "Cultural capital of Kelantan, near the Thailand border, cradle of Malay traditions such as shadow puppetry (Wayang Kulit) and kites (Wau)."
     },
     {
         id: 10,
@@ -111,7 +111,7 @@ const MALAYSIA_CITIES = [
         lat: 6.1248,
         lon: 100.3678,
         icon: "🌾",
-        desc: "Capital de Kedah, conhecida como o 'Cortejo de Arroz' da Malásia devido às suas vastas plantações de arroz."
+        desc: "Capital of Kedah, known as the 'Rice Bowl' of Malaysia due to its vast paddy fields."
     },
     {
         id: 11,
@@ -121,7 +121,7 @@ const MALAYSIA_CITIES = [
         lat: 2.7258,
         lon: 101.9424,
         icon: "🏠",
-        desc: "Capital de Negeri Sembilan, famosa pela arquitetura tradicional Minangkabau de telhados curvados em forma de chifres."
+        desc: "Capital of Negeri Sembilan, famous for traditional Minangkabau architecture with horn-shaped curved roofs."
     },
     {
         id: 12,
@@ -131,67 +131,67 @@ const MALAYSIA_CITIES = [
         lat: 6.4414,
         lon: 100.1986,
         icon: "🌱",
-        desc: "Menor capital estadual da Malásia, localizada no extremo norte de Perlis, famosa por suas formações rochosas e cavernas."
+        desc: "Smallest state capital in Malaysia, located in the far north of Perlis, famous for limestone formations and caves."
     },
     {
         id: 13,
         name: "Miri",
         state: "Sarawak",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 4.3995,
         lon: 113.9914,
         icon: "🛢️",
-        desc: "Berço da indústria de petróleo da Malásia e porta de entrada para o Parque Nacional de Gunung Mulu (Patrimônio UNESCO)."
+        desc: "Birthplace of Malaysia's petroleum industry and gateway to Gunung Mulu National Park (UNESCO World Heritage Site)."
     },
     {
         id: 14,
         name: "Sandakan",
         state: "Sabah",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 5.8394,
         lon: 118.1172,
         icon: "🦧",
-        desc: "Antiga capital de Sabah, centro mundial de ecoturismo e lar do famoso Centro de Reabilitação de Orangotangos de Sepilok."
+        desc: "Former capital of Sabah, global ecotourism hub and home to the famous Sepilok Orangutan Rehabilitation Centre."
     },
     {
         id: 15,
         name: "Sibu",
         state: "Sarawak",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 2.3000,
         lon: 111.8167,
         icon: "🌊",
-        desc: "Principal porto fluvial no rio Rajang (o mais longo da Malásia), coração comercial do interior de Sarawak."
+        desc: "Major river port on the Rajang River (Malaysia's longest river), commercial heart of Sarawak's interior."
     },
     {
         id: 16,
         name: "Tawau",
         state: "Sabah",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 4.2447,
         lon: 117.8912,
         icon: "🏝️",
-        desc: "Cidade costeira no sudeste de Sabah, porta de acesso para o arquipélago de Semporna e mergulho em Sipadan."
+        desc: "Coastal city in southeastern Sabah, gateway to the Semporna archipelago and diving at Sipadan."
     },
     {
         id: 17,
         name: "Putrajaya",
-        state: "Território Federal",
+        state: "Federal Territory",
         region: "Peninsular",
         lat: 2.9264,
         lon: 101.6964,
         icon: "🏛️",
-        desc: "Centro administrativo federal planejado da Malásia, famoso por suas pontes grandiosas e arquitetura futurista."
+        desc: "Planned federal administrative centre of Malaysia, famous for grand bridges and futuristic architecture."
     },
     {
         id: 18,
         name: "Bintulu",
         state: "Sarawak",
-        region: "Bornéu",
+        region: "Borneo",
         lat: 3.1667,
         lon: 113.0333,
         icon: "⚡",
-        desc: "Polo industrial de gás natural liquefeito (GNL) e energia da Malásia Oriental, localizado entre Miri e Sibu."
+        desc: "Liquefied Natural Gas (LNG) and industrial energy hub of East Malaysia, situated between Miri and Sibu."
     },
     {
         id: 19,
@@ -201,7 +201,7 @@ const MALAYSIA_CITIES = [
         lat: 3.0449,
         lon: 101.4456,
         icon: "⚓",
-        desc: "Cidade real de Selangor e lar do Port Klang, o maior e mais movimentado porto marítimo de carga da Malásia."
+        desc: "Royal city of Selangor and home to Port Klang, Malaysia's largest and busiest seaport."
     }
 ];
 
@@ -242,6 +242,9 @@ function buildFullDistanceMatrix() {
  * Exact Classical TSP Solver using Brute-Force / 2-Opt for selected city indices
  */
 function solveClassicalTSP(selectedCities, distMatrixFull) {
+    if (!selectedCities || selectedCities.length === 0) {
+        return { tourIndices: [], cityNames: [], totalDistance: 0 };
+    }
     const n = selectedCities.length;
     
     // For <= 8 cities, use exact brute-force search
@@ -334,5 +337,14 @@ function solveClassicalTSP(selectedCities, distMatrixFull) {
         tourIndices: bestTour,
         cityNames: bestTour.map(idx => selectedCities[idx].name),
         totalDistance: bestCost
+    };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        MALAYSIA_CITIES,
+        haversineDistance,
+        buildFullDistanceMatrix,
+        solveClassicalTSP
     };
 }

@@ -14,7 +14,7 @@ CITIES = [
     {"id": 0, "name": "Kuala Lumpur", "state": "Federal Territory", "lat": 3.1390, "lon": 101.6869},
     {"id": 1, "name": "George Town", "state": "Penang", "lat": 5.4164, "lon": 100.3327},
     {"id": 2, "name": "Johor Bahru", "state": "Johor", "lat": 1.4927, "lon": 103.7414},
-    {"id": 3, "name": "Malaca (Melaka)", "state": "Melaka", "lat": 2.1896, "lon": 102.2501},
+    {"id": 3, "name": "Melaka", "state": "Melaka", "lat": 2.1896, "lon": 102.2501},
     {"id": 4, "name": "Kota Kinabalu", "state": "Sabah", "lat": 5.9804, "lon": 116.0735},
     {"id": 5, "name": "Kuching", "state": "Sarawak", "lat": 1.5533, "lon": 110.3592},
     {"id": 6, "name": "Ipoh", "state": "Perak", "lat": 4.5975, "lon": 101.0901},
@@ -55,7 +55,7 @@ def build_distance_matrix(cities):
     return matrix
 
 class SimulatedAnnealingTSPSolver:
-    def __init__(self, cities, dist_matrix, t_initial=2000.0, alpha=0.998, max_iter=5000):
+    def __init__(self, cities, dist_matrix, t_initial=2000.0, alpha=0.998, max_iter=6000):
         self.cities = cities
         self.N = len(cities)
         self.dist_matrix = dist_matrix
@@ -70,6 +70,8 @@ class SimulatedAnnealingTSPSolver:
         return dist
 
     def get_neighbor_2opt(self, tour):
+        if self.N < 4:
+            return tour.copy()
         new_tour = tour.copy()
         i = random.randint(1, self.N - 2)
         j = random.randint(i + 1, self.N - 1)
@@ -77,6 +79,14 @@ class SimulatedAnnealingTSPSolver:
         return new_tour
 
     def solve(self):
+        if self.N == 0:
+            return {
+                "best_tour_indices": [],
+                "best_tour_names": [],
+                "best_distance_km": 0.0,
+                "history": []
+            }
+
         current_tour = list(range(self.N))
         current_cost = self.calculate_tour_distance(current_tour)
 
@@ -126,8 +136,8 @@ if __name__ == "__main__":
     sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=2000.0, alpha=0.998, max_iter=6000)
     result = sa_solver.solve()
 
-    print(f"\n1. Rota Encontrada via Simulated Annealing ({len(CITIES)} Cidades):")
-    print(f"   Rota: {' -> '.join(result['best_tour_names'])} -> {result['best_tour_names'][0]}")
-    print(f"   Distância Total: {result['best_distance_km']:.2f} km")
-    print(f"   Iterações Executadas: {len(result['history'])}")
+    print(f"\n1. Route Found via Simulated Annealing ({len(CITIES)} Cities):")
+    print(f"   Route: {' -> '.join(result['best_tour_names'])} -> {result['best_tour_names'][0]}")
+    print(f"   Total Distance: {result['best_distance_km']:.2f} km")
+    print(f"   Executed Iterations: {len(result['history'])}")
     print("=" * 75)

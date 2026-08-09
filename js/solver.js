@@ -4,23 +4,24 @@
  */
 
 class JSSimulatedAnnealingEngine {
-    constructor(selectedCities, distMatrixFull, tInitial = 1000.0, alpha = 0.995) {
-        this.selectedCities = selectedCities;
-        this.N = selectedCities.length;
+    constructor(selectedCities, distMatrixFull, tInitial = 2000.0, alpha = 0.998) {
+        this.selectedCities = selectedCities || [];
+        this.N = this.selectedCities.length;
         this.tInitial = tInitial;
         this.alpha = alpha;
 
         this.distMatrix = Array.from({ length: this.N }, () => new Float64Array(this.N));
         for (let i = 0; i < this.N; i++) {
             for (let j = 0; j < this.N; j++) {
-                const origI = selectedCities[i].id;
-                const origJ = selectedCities[j].id;
-                this.distMatrix[i][j] = distMatrixFull[origI][origJ];
+                const origI = this.selectedCities[i].id;
+                const origJ = this.selectedCities[j].id;
+                this.distMatrix[i][j] = distMatrixFull ? distMatrixFull[origI][origJ] : 0;
             }
         }
     }
 
     calculateTourDistance(tour) {
+        if (!tour || tour.length === 0) return 0;
         let dist = 0.0;
         for (let k = 0; k < this.N; k++) {
             dist += this.distMatrix[tour[k]][tour[(k + 1) % this.N]];
@@ -29,6 +30,7 @@ class JSSimulatedAnnealingEngine {
     }
 
     getNeighbor2Opt(tour) {
+        if (this.N < 4) return tour.slice();
         const newTour = tour.slice();
         const i = Math.floor(Math.random() * (this.N - 2)) + 1;
         const j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
@@ -44,7 +46,17 @@ class JSSimulatedAnnealingEngine {
         return newTour;
     }
 
-    async runSolver(maxIter = 1000, onProgress = null) {
+    async runSolver(maxIter = 5000, onProgress = null) {
+        if (this.N === 0) {
+            return {
+                optimalParams: [0],
+                finalExpectation: 0,
+                history: [],
+                topSamples: [],
+                bestValidSample: null
+            };
+        }
+
         let currentTour = Array.from({ length: this.N }, (_, i) => i);
         let currentCost = this.calculateTourDistance(currentTour);
 
@@ -100,4 +112,8 @@ class JSSimulatedAnnealingEngine {
             bestValidSample: bestSample
         };
     }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { JSSimulatedAnnealingEngine };
 }
