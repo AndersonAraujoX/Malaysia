@@ -58,10 +58,28 @@
                 <div class="city-list" id="cityList">
                     <!-- Cities injected by js/app.js -->
                 </div>
+            </div>
 
-                <button id="runBtn" class="btn-primary" style="margin-top: 12px; width: 100%;">
-                    <span>⚡ Execute Routing Model</span>
-                </button>
+            <!-- Constraint Penalty Control Card -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <h2 class="card-title">⚙️ Constraint Penalty Weight (λ)</h2>
+                </div>
+                <div class="control-group">
+                    <div>
+                        <div class="input-label">
+                            <span>Penalty Multiplier (λ):</span>
+                            <span class="val-badge" id="lambdaVal">500</span>
+                        </div>
+                        <input type="range" id="lambdaPenalty" min="0" max="2000" step="50" value="500">
+                        <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px; line-height: 1.3;">
+                            At <b>λ = 0</b>, constraint penalties are ignored and SA may select invalid or high-crossing routes. Increasing <b>λ</b> forces SA to strictly avoid violations.
+                        </div>
+                    </div>
+                    <button id="runBtn" class="btn-primary" style="margin-top: 8px;">
+                        <span>⚡ Execute Routing Model</span>
+                    </button>
+                </div>
             </div>
 
         </aside>
@@ -112,7 +130,7 @@
                                     <th>Algorithm</th>
                                     <th>Status</th>
                                     <th>Base Distance (km)</th>
-                                    <th>Constraint Penalty</th>
+                                    <th>Constraint Penalty (λ)</th>
                                     <th>Total Energy</th>
                                     <th>Complete City Sequence</th>
                                 </tr>

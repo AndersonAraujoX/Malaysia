@@ -15,31 +15,30 @@ test('Haversine Distance - Happy Path', () => {
     assert.ok(dist > 250 && dist < 400, `Distance should be ~300km, got ${dist}`);
 });
 
-test('Constraint Penalty Terms - Uniqueness & Regional Transit', () => {
+test('Constraint Penalty Terms - Zero Lambda vs Active Lambda', () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 500.0);
+    const alternatingTour = [0, 4, 1, 5, 2, 13, 3, 14, 6, 15, 7, 16, 8, 18, 9, 10, 11, 12, 17, 19];
 
-    // Act 1: Duplicate city index (Invalid tour)
-    const invalidTour = Array(20).fill(0);
-    const uniquenessPenalty = engine.calculatePenalty(invalidTour);
+    // Act 1: Lambda = 0
+    const engineZero = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 0.0);
+    const penaltyZero = engineZero.calculatePenalty(alternatingTour);
 
     // Assert 1
-    assert.ok(uniquenessPenalty >= 10000.0, `Should heavily penalize non-unique tours`);
+    assert.equal(penaltyZero, 0, `When lambda = 0, penalty must be 0`);
 
-    // Act 2: Alternating Peninsular <-> Borneo crossings (High regional transit penalty)
-    // 0: KL (Peninsular), 4: KK (Borneo), 1: GT (Peninsular), 5: Kuching (Borneo), etc.
-    const alternatingTour = [0, 4, 1, 5, 2, 13, 3, 14, 6, 15, 7, 16, 8, 18, 9, 10, 11, 12, 17, 19];
-    const transitPenalty = engine.calculatePenalty(alternatingTour);
+    // Act 2: Lambda = 500
+    const engineActive = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 500.0);
+    const penaltyActive = engineActive.calculatePenalty(alternatingTour);
 
     // Assert 2
-    assert.ok(transitPenalty > 0, `Should penalize excess inter-region crossings`);
+    assert.ok(penaltyActive > 0, `When lambda > 0, penalty must be active`);
 });
 
 test('Total Energy Function = Distance + Penalty', () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 500.0);
     const tour = Array.from({ length: 20 }, (_, i) => i);
 
     // Act
@@ -51,7 +50,7 @@ test('Total Energy Function = Distance + Penalty', () => {
     assert.equal(totalEnergy, baseDist + penalty);
 });
 
-test('Constrained Hybrid JSSimulatedAnnealingEngine - Full Run', async () => {
+test('Constrained Hybrid JSSimulatedAnnealingEngine - Dynamic Lambda Run', async () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
     const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 500.0);

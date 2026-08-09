@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // DOM Element References
     const cityListEl = document.getElementById('cityList');
     const runBtn = document.getElementById('runBtn');
+    const lambdaSlider = document.getElementById('lambdaPenalty');
+    const lambdaValEl = document.getElementById('lambdaVal');
     const qubitCountBadge = document.getElementById('qubitCountBadge');
     const statQuantumDist = document.getElementById('statQuantumDist');
     const statClassicalDist = document.getElementById('statClassicalDist');
@@ -130,6 +132,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         qubitCountBadge.textContent = `${numSelected} Cities | Penalty Constrained`;
     }
 
+    if (lambdaSlider && lambdaValEl) {
+        lambdaSlider.addEventListener('input', (e) => {
+            lambdaValEl.textContent = e.target.value;
+        });
+    }
+
     // 3. Setup Tabs
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -152,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Total Energy (Dist + Penalty)',
+                    label: 'Total Energy (Dist + λ Penalty)',
                     data: [],
                     borderColor: '#00f2fe',
                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
@@ -209,7 +217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 opacity: 0.95
             }).addTo(state.map);
 
-            const penaltyStr = saResult.bestValidSample.penalty > 0 ? ` (+${saResult.bestValidSample.penalty.toFixed(0)} penalty)` : '';
+            const penaltyStr = saResult.bestValidSample.penalty > 0 ? ` (+${saResult.bestValidSample.penalty.toFixed(0)} λ-penalty)` : '';
             statQuantumDist.textContent = `${saResult.bestValidSample.totalDistance.toFixed(1)} km${penaltyStr}`;
         } else {
             statQuantumDist.textContent = "No valid route";
@@ -227,13 +235,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tInit = 5000.0;
         const maxIter = 50000;
         const alpha = 0.9995;
+        const lambdaPen = lambdaSlider ? parseFloat(lambdaSlider.value) : 500.0;
 
         // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
         // 2. Initialize Routing Optimization Engine with Penalty Constraints
-        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, 500.0);
+        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, lambdaPen);
 
         if (state.energyChart) {
             state.energyChart.data.labels = [];
@@ -260,8 +269,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (sample) {
                 const tr = document.createElement('tr');
                 const penaltyBadge = sample.penalty === 0 ? 
-                    `<span style="color:#10b981;">0.0 km</span>` : 
-                    `<span style="color:#ef4444;">+${sample.penalty.toFixed(1)} km</span>`;
+                    `<span style="color:#10b981;">0.0 (λ=${lambdaPen})</span>` : 
+                    `<span style="color:#ef4444;">+${sample.penalty.toFixed(1)} (λ=${lambdaPen})</span>`;
                 tr.innerHTML = `
                     <td><code style="color:#00f2fe;">Constrained Routing Model</code></td>
                     <td><span class="tag-valid">${sample.isValid ? 'VALID' : 'PENALIZED'}</span></td>

@@ -1,16 +1,16 @@
 /**
  * High-Performance Hybrid Simulated Annealing & Metaheuristic TSP Solver (JavaScript)
- * Features Constraint Penalty Terms (Uniqueness & Regional Transit Penalty),
+ * Features Dynamic Constraint Penalty Terms (Uniqueness & Regional Transit Penalty),
  * O(1) Fast Delta Evaluation, Multi-Start NN Initialization, and 2-Opt Refinement.
  */
 
 class JSSimulatedAnnealingEngine {
-    constructor(selectedCities, distMatrixFull, tInitial = 5000.0, alpha = 0.9995, lambdaRegionPenalty = 500.0) {
+    constructor(selectedCities, distMatrixFull, tInitial = 5000.0, alpha = 0.9995, lambdaPenalty = 500.0) {
         this.selectedCities = selectedCities || [];
         this.N = this.selectedCities.length;
         this.tInitial = tInitial;
         this.alpha = alpha;
-        this.lambdaRegionPenalty = lambdaRegionPenalty;
+        this.lambdaPenalty = lambdaPenalty;
 
         this.distMatrix = Array.from({ length: this.N }, () => new Float64Array(this.N));
         for (let i = 0; i < this.N; i++) {
@@ -35,16 +35,16 @@ class JSSimulatedAnnealingEngine {
     }
 
     /**
-     * Constraint Penalty Function:
-     * 1. Uniqueness Penalty: Penalizes duplicate/missing cities if invalid permutation.
-     * 2. Regional Transit Penalty: Penalizes excess crossings between Peninsular and Borneo (> 2 crossings).
+     * Constraint Penalty Function (scaled by lambdaPenalty multiplier):
+     * - At lambdaPenalty = 0: Returns 0 (no penalty enforcement; SA evaluates pure distance).
+     * - At lambdaPenalty > 0: Penalizes duplicate cities & excess inter-regional crossings (> 2 crossings).
      */
     calculatePenalty(tour) {
-        if (!tour || tour.length === 0) return 0;
+        if (!tour || tour.length === 0 || this.lambdaPenalty === 0) return 0;
 
         // 1. Uniqueness Penalty
         const uniqueCount = new Set(tour).size;
-        const uniquenessPenalty = (this.N - uniqueCount) * 10000.0;
+        const uniquenessPenalty = (this.N - uniqueCount) * (this.lambdaPenalty * 20.0);
 
         // 2. Regional Transit Penalty (Peninsular vs Borneo)
         let crossings = 0;
@@ -56,7 +56,7 @@ class JSSimulatedAnnealingEngine {
             }
         }
         const excessCrossings = Math.max(0, crossings - 2);
-        const regionPenalty = excessCrossings * this.lambdaRegionPenalty;
+        const regionPenalty = excessCrossings * this.lambdaPenalty;
 
         return uniquenessPenalty + regionPenalty;
     }
@@ -120,7 +120,8 @@ class JSSimulatedAnnealingEngine {
         const newDist = this.distMatrix[u][w] + this.distMatrix[v][x];
         const distDelta = newDist - oldDist;
 
-        // Regional penalty delta
+        if (this.lambdaPenalty === 0) return distDelta;
+
         const newTour = this.apply2Opt(tour, i, j);
         const penaltyDelta = this.calculatePenalty(newTour) - this.calculatePenalty(tour);
 
@@ -221,7 +222,7 @@ class JSSimulatedAnnealingEngine {
             };
         }
 
-        let globalBestTour = this.getBestNearestNeighborTour();
+        let globalBestTour = (this.lambdaPenalty === 0) ? Array.from({ length: this.N }, (_, i) => i) : this.getBestNearestNeighborTour();
         let globalBestEnergy = this.calculateTotalEnergy(globalBestTour);
 
         const history = [];
