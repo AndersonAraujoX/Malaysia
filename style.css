@@ -221,12 +221,11 @@ body {
 .city-item:hover {
     background: var(--bg-glass-hover);
     border-color: rgba(0, 242, 254, 0.3);
-    transform: translateX(2px);
 }
 
 .city-item.active {
     background: rgba(0, 242, 254, 0.12);
-    border-color: rgba(0, 242, 254, 0.4);
+    border-color: var(--primary-cyan);
 }
 
 .city-info {
@@ -240,12 +239,12 @@ body {
 }
 
 .city-name {
+    font-size: 0.92rem;
     font-weight: 600;
-    font-size: 0.95rem;
 }
 
 .city-region {
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     color: var(--text-muted);
 }
 
@@ -272,14 +271,15 @@ body {
     font-size: 12px;
 }
 
-/* Control Panel Inputs */
-.control-group {
+/* Slider Controls */
+.slider-group {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 8px;
+    margin-bottom: 14px;
 }
 
-.input-label {
+.slider-label {
     display: flex;
     justify-content: space-between;
     font-size: 0.85rem;
@@ -287,7 +287,7 @@ body {
     color: var(--text-muted);
 }
 
-.val-badge {
+.slider-value {
     color: var(--primary-cyan);
     font-family: var(--font-mono);
     font-weight: 600;
@@ -319,10 +319,9 @@ input[type="range"] {
     align-items: center;
     justify-content: center;
     gap: 10px;
-
-    /* Add text transform for impact */
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-top: 14px;
 }
 
 .btn-primary:hover {
@@ -349,7 +348,7 @@ input[type="range"] {
 
 /* Map Container */
 .map-card {
-    height: 480px;
+    height: 680px;
     position: relative;
     padding: 0;
     overflow: hidden;
@@ -390,183 +389,18 @@ input[type="range"] {
     font-family: var(--font-mono);
 }
 
-.stat-quantum span { color: var(--primary-cyan); }
-.stat-classical span { color: var(--emerald-green); }
-
-/* Tabs Inspector */
-.tabs-header {
-    display: flex;
-    gap: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 20px;
+.stat-quantum {
+    border-color: rgba(0, 242, 254, 0.4);
 }
 
-.tab-btn {
-    padding: 10px 18px;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
-    font-size: 0.92rem;
-    font-weight: 600;
-    font-family: var(--font-heading);
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.tab-btn:hover {
-    color: var(--text-main);
-}
-
-.tab-btn.active {
+.stat-quantum span:last-child {
     color: var(--primary-cyan);
-    border-bottom-color: var(--primary-cyan);
 }
 
-.tab-content {
-    display: none;
+.stat-classical {
+    border-color: rgba(16, 185, 129, 0.4);
 }
 
-.tab-content.active {
-    display: block;
-}
-
-/* Charts Grid */
-.charts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-@media (max-width: 900px) {
-    .charts-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-.chart-container {
-    height: 260px;
-    position: relative;
-}
-
-/* QUBO Heatmap Canvas */
-.matrix-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow-x: auto;
-    padding: 10px;
-}
-
-canvas#quboCanvas {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Comparison Table */
-.table-responsive {
-    overflow-x: auto;
-}
-
-.custom-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-
-.custom-table th {
-    text-align: left;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-muted);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-weight: 600;
-}
-
-.custom-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.custom-table tr:hover td {
-    background: var(--bg-glass-hover);
-}
-
-.tag-valid {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    background: rgba(16, 185, 129, 0.15);
+.stat-classical span:last-child {
     color: var(--emerald-green);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.tag-invalid {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    background: rgba(247, 37, 133, 0.15);
-    color: var(--quantum-pink);
-    border: 1px solid rgba(247, 37, 133, 0.3);
-}
-
-/* Circuit Gate Visualizer */
-.circuit-diagram {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    padding: 16px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: var(--radius-md);
-    overflow-x: auto;
-}
-
-.qubit-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.gate {
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.75rem;
-}
-
-.gate-h { background: #3b82f6; color: #fff; }
-.gate-uc { background: #8b5cf6; color: #fff; }
-.gate-ub { background: #ec4899; color: #fff; }
-.gate-m { background: #10b981; color: #fff; }
-
-/* Custom Leaflet Map Styling */
-.leaflet-popup-content-wrapper {
-    background: rgba(10, 14, 26, 0.95) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 242, 254, 0.3);
-    color: #fff !important;
-    border-radius: 12px !important;
-    box-shadow: var(--glow-cyan) !important;
-}
-
-.leaflet-popup-tip {
-    background: rgba(10, 14, 26, 0.95) !important;
-}
-
-.city-popup-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--primary-cyan);
-    margin-bottom: 4px;
-}
-
-.city-popup-desc {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    line-height: 1.4;
 }

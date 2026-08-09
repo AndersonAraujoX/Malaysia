@@ -227,35 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const solverRes = await solverEngine.runSolver(maxIter);
         state.lastSaResult = solverRes;
 
-        // 4. Update Comparison Table
-        const tableBody = document.getElementById('tableBody');
-        if (tableBody) {
-            tableBody.innerHTML = '';
-            const sample = getSampleObject(solverRes);
-            if (sample) {
-                const hCost = typeof sample.hCost === 'number' ? sample.hCost : 0;
-                const hCity = typeof sample.hCity === 'number' ? sample.hCity : 0;
-                const hStep = typeof sample.hStep === 'number' ? sample.hStep : 0;
-                const hRegion = typeof sample.hRegion === 'number' ? sample.hRegion : 0;
-                const energy = typeof sample.energy === 'number' ? sample.energy : 0;
-                const cityNames = Array.isArray(sample.cityNames) ? sample.cityNames.join(' ➔ ') : '';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><code style="color:#00f2fe;">Hamiltonian SA</code></td>
-                    <td><span class="tag-valid">${sample.isValid ? 'GROUND STATE' : 'EXCITED STATE'}</span></td>
-                    <td style="font-weight: 700; color: #00f2fe;">${hCost.toFixed(1)} km</td>
-                    <td style="color:#f59e0b;">${hCity.toFixed(1)}</td>
-                    <td style="color:#ec4899;">${hStep.toFixed(1)}</td>
-                    <td style="color:#3b82f6;">${hRegion.toFixed(1)}</td>
-                    <td style="font-family: var(--font-mono); color:#a855f7; font-weight:700;">${energy.toFixed(1)}</td>
-                    <td style="font-size:0.82rem; color:#94a3b8; line-height: 1.4;">${cityNames}</td>
-                `;
-                tableBody.appendChild(tr);
-            }
-        }
-
-        // 5. Update Map Routes
+        // 4. Update Map Routes
         drawRoutes(classicalRes, solverRes, selectedCities);
 
         if (runBtn) {
