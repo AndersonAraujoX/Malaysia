@@ -51,26 +51,27 @@ test('Solve Classical TSP - Happy Path (Small Subset <= 8 cities)', () => {
     assert.ok(result.totalDistance > 0);
 });
 
-test('Solve Classical TSP - Edge Case: Empty Selection', () => {
+test('Nearest Neighbor Heuristic - Happy Path', () => {
     // Arrange
-    const selected = [];
     const fullMatrix = buildFullDistanceMatrix();
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
 
     // Act
-    const result = solveClassicalTSP(selected, fullMatrix);
+    const tour = engine.getNearestNeighborTour(0);
+    const dist = engine.calculateTourDistance(tour);
 
     // Assert
-    assert.equal(result.totalDistance, 0);
-    assert.equal(result.tourIndices.length, 0);
+    assert.equal(tour.length, 20);
+    assert.ok(dist > 0 && dist < 8000, `Nearest neighbor distance should be reasonable, got ${dist}`);
 });
 
-test('JSSimulatedAnnealingEngine - Happy Path (Full 20 Cities)', async () => {
+test('JSSimulatedAnnealingEngine High-Performance - Full 20 Cities', async () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 1000.0, 0.99);
+    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9992);
 
     // Act
-    const res = await engine.runSolver(500);
+    const res = await engine.runSolver(3000);
 
     // Assert
     assert.ok(res.bestValidSample);

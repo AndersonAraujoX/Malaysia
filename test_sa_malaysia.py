@@ -3,7 +3,7 @@
 Unit Test Suite for Simulated Annealing TSP Solver (Malaysia)
 =============================================================
 Follows AAA (Arrange-Act-Assert) pattern, covering happy paths, edge cases,
-and boundary behavior.
+nearest neighbor heuristic, and boundary behavior.
 """
 
 import unittest
@@ -43,10 +43,23 @@ class TestDistanceMatrix(unittest.TestCase):
         self.assertTrue(matrix[0, 1] > 0.0)
 
 class TestSimulatedAnnealingSolver(unittest.TestCase):
+    def test_nearest_neighbor_tour_happy_path(self):
+        # Arrange
+        matrix = build_distance_matrix(CITIES)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
+
+        # Act
+        tour = solver.get_nearest_neighbor_tour(0)
+        dist = solver.calculate_tour_distance(tour)
+
+        # Assert
+        self.assertEqual(len(tour), 20)
+        self.assertTrue(dist > 0.0)
+
     def test_solver_happy_path(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, t_initial=1000.0, alpha=0.99, max_iter=300)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, t_initial=5000.0, alpha=0.9992, max_iter=1500)
 
         # Act
         result = solver.solve()

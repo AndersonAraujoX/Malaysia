@@ -2,8 +2,8 @@
 """
 Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 ======================================================================
-This module solves the Traveling Salesperson Problem (TSP) for 20 major 
-cities of Malaysia using Simulated Annealing (Metropolis-Hastings 2-opt).
+High-performance Traveling Salesperson Problem (TSP) solver for 20 major 
+cities of Malaysia using Multi-Start Simulated Annealing with 2-opt local search.
 """
 
 import math
@@ -55,7 +55,7 @@ def build_distance_matrix(cities):
     return matrix
 
 class SimulatedAnnealingTSPSolver:
-    def __init__(self, cities, dist_matrix, t_initial=2000.0, alpha=0.998, max_iter=6000):
+    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9992, max_iter=15000):
         self.cities = cities
         self.N = len(cities)
         self.dist_matrix = dist_matrix
@@ -64,17 +64,36 @@ class SimulatedAnnealingTSPSolver:
         self.max_iter = max_iter
 
     def calculate_tour_distance(self, tour):
+        if not tour or len(tour) == 0:
+            return 0.0
         dist = 0.0
         for k in range(self.N):
             dist += self.dist_matrix[tour[k], tour[(k + 1) % self.N]]
         return dist
 
+    def get_nearest_neighbor_tour(self, start_idx=0):
+        if self.N == 0:
+            return []
+        unvisited = set(range(self.N))
+        tour = [start_idx]
+        unvisited.remove(start_idx)
+
+        current = start_idx
+        while unvisited:
+            nearest = min(unvisited, key=lambda nbr: self.dist_matrix[current, nbr])
+            tour.append(nearest)
+            unvisited.remove(nearest)
+            current = nearest
+        return tour
+
     def get_neighbor_2opt(self, tour):
         if self.N < 4:
             return tour.copy()
         new_tour = tour.copy()
-        i = random.randint(1, self.N - 2)
+        i = random.randint(0, self.N - 2)
         j = random.randint(i + 1, self.N - 1)
+        if i == 0 and j == self.N - 1:
+            j = self.N - 2
         new_tour[i:j+1] = reversed(new_tour[i:j+1])
         return new_tour
 
@@ -87,43 +106,47 @@ class SimulatedAnnealingTSPSolver:
                 "history": []
             }
 
-        current_tour = list(range(self.N))
-        current_cost = self.calculate_tour_distance(current_tour)
+        global_best_tour = self.get_nearest_neighbor_tour(0)
+        global_best_cost = self.calculate_tour_distance(global_best_tour)
 
-        best_tour = current_tour.copy()
-        best_cost = current_cost
-
-        T = self.t_initial
         history = []
+        restarts = 3
+        iter_per_restart = max(1, self.max_iter // restarts)
 
-        for step in range(self.max_iter):
-            neighbor_tour = self.get_neighbor_2opt(current_tour)
-            neighbor_cost = self.calculate_tour_distance(neighbor_tour)
-            delta_E = neighbor_cost - current_cost
+        for r in range(restarts):
+            current_tour = global_best_tour.copy() if r == 0 else self.get_neighbor_2opt(global_best_tour)
+            current_cost = self.calculate_tour_distance(current_tour)
 
-            if delta_E < 0 or random.random() < math.exp(-delta_E / T):
-                current_tour = neighbor_tour
-                current_cost = neighbor_cost
+            T = self.t_initial
 
-                if current_cost < best_cost:
-                    best_tour = current_tour.copy()
-                    best_cost = current_cost
+            for step in range(iter_per_restart):
+                neighbor_tour = self.get_neighbor_2opt(current_tour)
+                neighbor_cost = self.calculate_tour_distance(neighbor_tour)
+                delta_E = neighbor_cost - current_cost
 
-            history.append({
-                "step": step,
-                "temp": T,
-                "current_cost": current_cost,
-                "best_cost": best_cost
-            })
+                if delta_E < 0 or random.random() < math.exp(-delta_E / T):
+                    current_tour = neighbor_tour
+                    current_cost = neighbor_cost
 
-            T *= self.alpha
-            if T < 1e-4:
-                break
+                    if current_cost < global_best_cost:
+                        global_best_tour = current_tour.copy()
+                        global_best_cost = current_cost
+
+                history.append({
+                    "step": len(history),
+                    "temp": T,
+                    "current_cost": current_cost,
+                    "best_cost": global_best_cost
+                })
+
+                T *= self.alpha
+                if T < 1e-5:
+                    break
 
         return {
-            "best_tour_indices": best_tour,
-            "best_tour_names": [self.cities[i]["name"] for i in best_tour],
-            "best_distance_km": best_cost,
+            "best_tour_indices": global_best_tour,
+            "best_tour_names": [self.cities[i]["name"] for i in global_best_tour],
+            "best_distance_km": global_best_cost,
             "history": history
         }
 
@@ -133,7 +156,7 @@ if __name__ == "__main__":
     print("=" * 75)
 
     dist_mat = build_distance_matrix(CITIES)
-    sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=2000.0, alpha=0.998, max_iter=6000)
+    sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=5000.0, alpha=0.9992, max_iter=15000)
     result = sa_solver.solve()
 
     print(f"\n1. Route Found via Simulated Annealing ({len(CITIES)} Cities):")

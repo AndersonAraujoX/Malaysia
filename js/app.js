@@ -1,6 +1,6 @@
 /**
  * Main Web Application Controller & Leaflet / Visualizations Integration
- * Simulated Annealing & TSP for Malaysian Cities
+ * Traveling Salesperson Routing Model for Malaysian Cities
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -25,8 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statClassicalDist = document.getElementById('statClassicalDist');
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
-    const btnSelectMain7 = document.getElementById('btnSelectMain7');
-    const btnSelectAll20 = document.getElementById('btnSelectAll20');
 
     // 1. Initialize Leaflet Dark Map
     function initMap() {
@@ -129,25 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateBadge() {
         const numSelected = state.selectedCityIds.size;
-        qubitCountBadge.textContent = `${numSelected} Cities | Simulated Annealing`;
-    }
-
-    if (btnSelectMain7) {
-        btnSelectMain7.addEventListener('click', () => {
-            state.selectedCityIds = new Set([0, 1, 2, 3, 4, 5, 6]);
-            renderCityList();
-            renderCityMarkers();
-            updateBadge();
-        });
-    }
-
-    if (btnSelectAll20) {
-        btnSelectAll20.addEventListener('click', () => {
-            state.selectedCityIds = new Set(Array.from({ length: 20 }, (_, i) => i));
-            renderCityList();
-            renderCityMarkers();
-            updateBadge();
-        });
+        qubitCountBadge.textContent = `${numSelected} Cities | Routing Model`;
     }
 
     // 3. Setup Tabs
@@ -172,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Energy / Route Distance (km)',
+                    label: 'Route Distance (km)',
                     data: [],
                     borderColor: '#00f2fe',
                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
@@ -239,19 +219,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function runOptimization() {
         if (runBtn) {
             runBtn.disabled = true;
-            runBtn.innerHTML = `<span>⏳ Optimizing...</span>`;
+            runBtn.innerHTML = `<span>⏳ Optimizing Route...</span>`;
         }
 
         const selectedCities = MALAYSIA_CITIES.filter(c => state.selectedCityIds.has(c.id));
-        const tInit = 2000.0;
-        const maxIter = 5000;
-        const alpha = 0.998;
+        const tInit = 5000.0;
+        const maxIter = 15000;
+        const alpha = 0.9992;
 
         // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
-        // 2. Initialize Simulated Annealing Engine with default parameters
+        // 2. Initialize Routing Optimization Engine with high-performance parameters
         const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha);
 
         if (state.energyChart) {
@@ -280,7 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const tr = document.createElement('tr');
                 const finalTemp = solverRes.optimalParams[0] ? solverRes.optimalParams[0].toFixed(2) : '0.00';
                 tr.innerHTML = `
-                    <td><code style="color:#00f2fe;">Simulated Annealing</code></td>
+                    <td><code style="color:#00f2fe;">Routing Model</code></td>
                     <td><span class="tag-valid">VALID</span></td>
                     <td style="font-weight: 700; color: #00f2fe;">${sample.totalDistance.toFixed(1)} km</td>
                     <td style="font-family: var(--font-mono);">${finalTemp} K</td>
@@ -295,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (runBtn) {
             runBtn.disabled = false;
-            runBtn.innerHTML = `<span>⚡ Run Simulated Annealing</span>`;
+            runBtn.innerHTML = `<span>⚡ Execute Routing Model</span>`;
         }
     }
 
