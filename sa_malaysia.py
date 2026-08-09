@@ -3,8 +3,8 @@
 Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 ======================================================================
 State-of-the-art Hybrid Simulated Annealing solver for 20 major cities of 
-Malaysia featuring Constraint Penalty Terms (Uniqueness & Regional Transit Penalty),
-O(1) delta evaluation, and deterministic local refinement.
+Malaysia featuring Explicit Hamiltonian Operator Formulation:
+H = H_cost + A * H_city + B * H_step + C * H_region
 """
 
 import math
@@ -56,14 +56,16 @@ def build_distance_matrix(cities):
     return matrix
 
 class SimulatedAnnealingTSPSolver:
-    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9995, max_iter=50000, lambda_region_penalty=500.0):
+    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9995, max_iter=50000, param_a=1000.0, param_b=1000.0, param_c=500.0):
         self.cities = cities
         self.N = len(cities)
         self.dist_matrix = dist_matrix
         self.t_initial = t_initial
         self.alpha = alpha
         self.max_iter = max_iter
-        self.lambda_region_penalty = lambda_region_penalty
+        self.param_a = param_a
+        self.param_b = param_b
+        self.param_c = param_c
 
     def calculate_tour_distance(self, tour):
         if not tour or len(tour) == 0:
@@ -73,15 +75,15 @@ class SimulatedAnnealingTSPSolver:
             dist += self.dist_matrix[tour[k], tour[(k + 1) % self.N]]
         return dist
 
-    def calculate_penalty(self, tour):
+    def calculate_hamiltonian(self, tour):
         if not tour or len(tour) == 0:
-            return 0.0
+            return {"h_cost": 0.0, "h_city": 0.0, "h_step": 0.0, "h_region": 0.0, "total_hamiltonian": 0.0}
 
-        # 1. Uniqueness Penalty
+        h_cost = self.calculate_tour_distance(tour)
         unique_count = len(set(tour))
-        uniqueness_penalty = (self.N - unique_count) * 10000.0
+        h_city = (self.N - unique_count) * self.param_a
+        h_step = abs(self.N - len(tour)) * self.param_b
 
-        # 2. Regional Transit Penalty (Peninsular vs Borneo)
         crossings = 0
         for k in range(self.N):
             r1 = self.cities[tour[k]].get("region")
@@ -90,12 +92,19 @@ class SimulatedAnnealingTSPSolver:
                 crossings += 1
 
         excess_crossings = max(0, crossings - 2)
-        region_penalty = excess_crossings * self.lambda_region_penalty
+        h_region = excess_crossings * self.param_c
+        total = h_cost + h_city + h_step + h_region
 
-        return uniqueness_penalty + region_penalty
+        return {
+            "h_cost": h_cost,
+            "h_city": h_city,
+            "h_step": h_step,
+            "h_region": h_region,
+            "total_hamiltonian": total
+        }
 
     def calculate_total_energy(self, tour):
-        return self.calculate_tour_distance(tour) + self.calculate_penalty(tour)
+        return self.calculate_hamiltonian(tour)["total_hamiltonian"]
 
     def get_best_nearest_neighbor_tour(self):
         if self.N == 0:
@@ -122,16 +131,6 @@ class SimulatedAnnealingTSPSolver:
 
         return best_tour
 
-    def evaluate_delta_2opt(self, tour, i, j):
-        new_tour = self.apply_2opt(tour, i, j)
-        return self.calculate_total_energy(new_tour) - self.calculate_total_energy(tour)
-
-    def evaluate_delta_insertion(self, tour, frm, to):
-        if frm == to or frm == (to + 1) % self.N:
-            return 0.0
-        new_tour = self.apply_insertion(tour, frm, to)
-        return self.calculate_total_energy(new_tour) - self.calculate_total_energy(tour)
-
     def apply_2opt(self, tour, i, j):
         new_tour = tour.copy()
         new_tour[i:j+1] = reversed(new_tour[i:j+1])
@@ -140,8 +139,7 @@ class SimulatedAnnealingTSPSolver:
     def apply_insertion(self, tour, frm, to):
         new_tour = tour.copy()
         node = new_tour.pop(frm)
-        insert_idx = to if to < frm else to
-        new_tour.insert(insert_idx, node)
+        new_tour.insert(to, node)
         return new_tour
 
     def refine_2opt(self, tour):
@@ -155,10 +153,11 @@ class SimulatedAnnealingTSPSolver:
                 for j in range(i + 1, self.N):
                     if i == 0 and j == self.N - 1:
                         continue
-                    delta_E = self.evaluate_delta_2opt(current_tour, i, j)
-                    if delta_E < -1e-6:
-                        current_tour = self.apply_2opt(current_tour, i, j)
-                        current_energy += delta_E
+                    candidate = self.apply_2opt(current_tour, i, j)
+                    cand_energy = self.calculate_total_energy(candidate)
+                    if cand_energy < current_energy - 1e-6:
+                        current_tour = candidate
+                        current_energy = cand_energy
                         improved = True
 
         return current_tour, current_energy
@@ -169,7 +168,6 @@ class SimulatedAnnealingTSPSolver:
                 "best_tour_indices": [],
                 "best_tour_names": [],
                 "best_distance_km": 0.0,
-                "penalty": 0.0,
                 "history": []
             }
 
@@ -193,57 +191,58 @@ class SimulatedAnnealingTSPSolver:
                     j = random.randint(i + 1, self.N - 1)
                     if i == 0 and j == self.N - 1:
                         j = self.N - 2
-                    delta_E = self.evaluate_delta_2opt(current_tour, i, j)
+                    candidate_tour = self.apply_2opt(current_tour, i, j)
                 else:
                     i = random.randint(0, self.N - 1)
                     j = random.randint(0, self.N - 1)
-                    delta_E = self.evaluate_delta_insertion(current_tour, i, j)
+                    candidate_tour = self.apply_insertion(current_tour, i, j)
+
+                candidate_energy = self.calculate_total_energy(candidate_tour)
+                delta_E = candidate_energy - current_energy
 
                 if delta_E < 0 or random.random() < math.exp(-delta_E / T):
-                    current_tour = self.apply_2opt(current_tour, i, j) if is_2opt else self.apply_insertion(current_tour, i, j)
-                    current_energy += delta_E
+                    current_tour = candidate_tour
+                    current_energy = candidate_energy
 
                     if current_energy < global_best_energy:
                         global_best_tour = current_tour.copy()
                         global_best_energy = current_energy
 
-                history.append({
-                    "step": len(history),
-                    "temp": T,
-                    "current_energy": current_energy,
-                    "best_energy": global_best_energy
-                })
-
+                history.append(current_energy)
                 T *= self.alpha
                 if T < 1e-5:
                     break
 
         global_best_tour, _ = self.refine_2opt(global_best_tour)
-        final_dist = self.calculate_tour_distance(global_best_tour)
-        final_penalty = self.calculate_penalty(global_best_tour)
+        h_final = self.calculate_hamiltonian(global_best_tour)
 
         return {
             "best_tour_indices": global_best_tour,
             "best_tour_names": [self.cities[i]["name"] for i in global_best_tour],
-            "best_distance_km": final_dist,
-            "penalty": final_penalty,
-            "total_energy": final_dist + final_penalty,
+            "best_distance_km": h_final["h_cost"],
+            "h_cost": h_final["h_cost"],
+            "h_city": h_final["h_city"],
+            "h_step": h_final["h_step"],
+            "h_region": h_final["h_region"],
+            "total_energy": h_final["total_hamiltonian"],
             "history": history
         }
 
 if __name__ == "__main__":
     print("=" * 75)
-    print(f"  CONSTRAINED SIMULATED ANNEALING TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
+    print(f"  HAMILTONIAN TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
     print("=" * 75)
 
     dist_mat = build_distance_matrix(CITIES)
     sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=5000.0, alpha=0.9995, max_iter=50000)
     result = sa_solver.solve()
 
-    print(f"\n1. Optimal Route Found ({len(CITIES)} Cities):")
+    print(f"\n1. Ground State Route Found ({len(CITIES)} Cities):")
     print(f"   Route: {' -> '.join(result['best_tour_names'])} -> {result['best_tour_names'][0]}")
-    print(f"   Base Distance: {result['best_distance_km']:.2f} km")
-    print(f"   Constraint Penalty: {result['penalty']:.2f} km")
-    print(f"   Total Penalty-Adjusted Energy: {result['total_energy']:.2f}")
+    print(f"   H_cost: {result['h_cost']:.2f} km")
+    print(f"   A*H_city: {result['h_city']:.2f}")
+    print(f"   B*H_step: {result['h_step']:.2f}")
+    print(f"   C*H_region: {result['h_region']:.2f}")
+    print(f"   Total Ground State Energy <H>: {result['total_energy']:.2f}")
     print(f"   Executed Iterations: {len(result['history'])}")
     print("=" * 75)

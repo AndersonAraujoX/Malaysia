@@ -1,6 +1,6 @@
 /**
  * Main Web Application Controller & Leaflet / Visualizations Integration
- * Traveling Salesperson Routing Model with Penalty Constraints
+ * Traveling Salesperson Routing Model with Explicit Hamiltonian Multipliers (A, B, C)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -20,8 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // DOM Element References
     const cityListEl = document.getElementById('cityList');
     const runBtn = document.getElementById('runBtn');
-    const lambdaSlider = document.getElementById('lambdaPenalty');
-    const lambdaValEl = document.getElementById('lambdaVal');
+
+    const paramASlider = document.getElementById('paramA');
+    const valAEl = document.getElementById('valA');
+    const paramBSlider = document.getElementById('paramB');
+    const valBEl = document.getElementById('valB');
+    const paramCSlider = document.getElementById('paramC');
+    const valCEl = document.getElementById('valC');
+
     const qubitCountBadge = document.getElementById('qubitCountBadge');
     const statQuantumDist = document.getElementById('statQuantumDist');
     const statClassicalDist = document.getElementById('statClassicalDist');
@@ -129,13 +135,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateBadge() {
         const numSelected = state.selectedCityIds.size;
-        qubitCountBadge.textContent = `${numSelected} Cities | Penalty Constrained`;
+        qubitCountBadge.textContent = `${numSelected} Cities | Hamiltonian Solver`;
     }
 
-    if (lambdaSlider && lambdaValEl) {
-        lambdaSlider.addEventListener('input', (e) => {
-            lambdaValEl.textContent = e.target.value;
-        });
+    if (paramASlider && valAEl) {
+        paramASlider.addEventListener('input', (e) => valAEl.textContent = e.target.value);
+    }
+    if (paramBSlider && valBEl) {
+        paramBSlider.addEventListener('input', (e) => valBEl.textContent = e.target.value);
+    }
+    if (paramCSlider && valCEl) {
+        paramCSlider.addEventListener('input', (e) => valCEl.textContent = e.target.value);
     }
 
     // 3. Setup Tabs
@@ -160,7 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Total Energy (Dist + λ Penalty)',
+                    label: 'Hamiltonian Expectation ⟨H⟩',
                     data: [],
                     borderColor: '#00f2fe',
                     backgroundColor: 'rgba(0, 242, 254, 0.1)',
@@ -217,8 +227,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 opacity: 0.95
             }).addTo(state.map);
 
-            const penaltyStr = saResult.bestValidSample.penalty > 0 ? ` (+${saResult.bestValidSample.penalty.toFixed(0)} λ-penalty)` : '';
-            statQuantumDist.textContent = `${saResult.bestValidSample.totalDistance.toFixed(1)} km${penaltyStr}`;
+            const sample = saResult.bestValidSample;
+            const extraPenalty = sample.hCity + sample.hStep + sample.hRegion;
+            const penaltyStr = extraPenalty > 0 ? ` (+${extraPenalty.toFixed(0)} penalty)` : '';
+            statQuantumDist.textContent = `${sample.hCost.toFixed(1)} km${penaltyStr}`;
         } else {
             statQuantumDist.textContent = "No valid route";
         }
@@ -228,21 +240,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function runOptimization() {
         if (runBtn) {
             runBtn.disabled = true;
-            runBtn.innerHTML = `<span>⏳ Optimizing Route...</span>`;
+            runBtn.innerHTML = `<span>⏳ Finding Ground State...</span>`;
         }
 
         const selectedCities = MALAYSIA_CITIES.filter(c => state.selectedCityIds.has(c.id));
         const tInit = 5000.0;
         const maxIter = 50000;
         const alpha = 0.9995;
-        const lambdaPen = lambdaSlider ? parseFloat(lambdaSlider.value) : 500.0;
+
+        const pA = paramASlider ? parseFloat(paramASlider.value) : 1000.0;
+        const pB = paramBSlider ? parseFloat(paramBSlider.value) : 1000.0;
+        const pC = paramCSlider ? parseFloat(paramCSlider.value) : 500.0;
 
         // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
-        // 2. Initialize Routing Optimization Engine with Penalty Constraints
-        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, lambdaPen);
+        // 2. Initialize Routing Optimization Engine with Explicit Hamiltonian Parameters
+        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, pA, pB, pC);
 
         if (state.energyChart) {
             state.energyChart.data.labels = [];
@@ -268,15 +283,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sample = solverRes.bestValidSample;
             if (sample) {
                 const tr = document.createElement('tr');
-                const penaltyBadge = sample.penalty === 0 ? 
-                    `<span style="color:#10b981;">0.0 (λ=${lambdaPen})</span>` : 
-                    `<span style="color:#ef4444;">+${sample.penalty.toFixed(1)} (λ=${lambdaPen})</span>`;
                 tr.innerHTML = `
-                    <td><code style="color:#00f2fe;">Constrained Routing Model</code></td>
-                    <td><span class="tag-valid">${sample.isValid ? 'VALID' : 'PENALIZED'}</span></td>
-                    <td style="font-weight: 700; color: #00f2fe;">${sample.totalDistance.toFixed(1)} km</td>
-                    <td>${penaltyBadge}</td>
-                    <td style="font-family: var(--font-mono); color:#a855f7;">${sample.energy.toFixed(1)}</td>
+                    <td><code style="color:#00f2fe;">Hamiltonian SA</code></td>
+                    <td><span class="tag-valid">${sample.isValid ? 'GROUND STATE' : 'EXCITED STATE'}</span></td>
+                    <td style="font-weight: 700; color: #00f2fe;">${sample.hCost.toFixed(1)} km</td>
+                    <td style="color:#f59e0b;">${sample.hCity.toFixed(1)}</td>
+                    <td style="color:#ec4899;">${sample.hStep.toFixed(1)}</td>
+                    <td style="color:#3b82f6;">${sample.hRegion.toFixed(1)}</td>
+                    <td style="font-family: var(--font-mono); color:#a855f7; font-weight:700;">${sample.energy.toFixed(1)}</td>
                     <td style="font-size:0.82rem; color:#94a3b8; line-height: 1.4;">${sample.cityNames.join(' ➔ ')}</td>
                 `;
                 tableBody.appendChild(tr);

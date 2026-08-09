@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traveling Salesperson - 20 Cities of Malaysia (Routing Model)</title>
+    <title>Traveling Salesperson - 20 Cities of Malaysia (Hamiltonian Optimization)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,12 +30,12 @@
             <div class="brand-logo">🇲🇾</div>
             <div>
                 <h1 class="brand-title">TSP Malaysia (20 Cities)</h1>
-                <p class="brand-subtitle">Traveling Salesperson Problem Optimization with Penalty Constraints</p>
+                <p class="brand-subtitle">Hamiltonian Energy Minimization (H = H_cost + A·H_city + B·H_step + C·H_region)</p>
             </div>
         </div>
         <div class="nav-badges">
             <div class="badge badge-quantum">
-                <span>⚡</span> <span id="qubitCountBadge">20 Cities | Penalty Constrained</span>
+                <span>⚡</span> <span id="qubitCountBadge">20 Cities | Hamiltonian Solver</span>
             </div>
             <div class="badge badge-malaysia">
                 <span>🇲🇾</span> <span>20 Malaysian Cities</span>
@@ -60,23 +60,39 @@
                 </div>
             </div>
 
-            <!-- Constraint Penalty Control Card -->
+            <!-- Hamiltonian Multipliers Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h2 class="card-title">⚙️ Constraint Penalty Weight (λ)</h2>
+                    <h2 class="card-title">⚛️ Hamiltonian Multipliers (A, B, C)</h2>
                 </div>
                 <div class="control-group">
                     <div>
                         <div class="input-label">
-                            <span>Penalty Multiplier (λ):</span>
-                            <span class="val-badge" id="lambdaVal">500</span>
+                            <span>A (City Uniqueness Penalty):</span>
+                            <span class="val-badge" id="valA">1000</span>
                         </div>
-                        <input type="range" id="lambdaPenalty" min="0" max="2000" step="50" value="500">
-                        <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px; line-height: 1.3;">
-                            At <b>λ = 0</b>, constraint penalties are ignored and SA may select invalid or high-crossing routes. Increasing <b>λ</b> forces SA to strictly avoid violations.
-                        </div>
+                        <input type="range" id="paramA" min="0" max="5000" step="100" value="1000">
                     </div>
-                    <button id="runBtn" class="btn-primary" style="margin-top: 8px;">
+                    <div style="margin-top: 8px;">
+                        <div class="input-label">
+                            <span>B (Step Uniqueness Penalty):</span>
+                            <span class="val-badge" id="valB">1000</span>
+                        </div>
+                        <input type="range" id="paramB" min="0" max="5000" step="100" value="1000">
+                    </div>
+                    <div style="margin-top: 8px;">
+                        <div class="input-label">
+                            <span>C (Regional Transit Penalty):</span>
+                            <span class="val-badge" id="valC">500</span>
+                        </div>
+                        <input type="range" id="paramC" min="0" max="2000" step="50" value="500">
+                    </div>
+
+                    <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px; line-height: 1.3;">
+                        When <b>A=0, B=0, C=0</b>, constraint penalties are ignored and SA may converge to invalid or high-crossing routes. Setting high coefficients forces SA to strictly avoid violations.
+                    </div>
+
+                    <button id="runBtn" class="btn-primary" style="margin-top: 10px;">
                         <span>⚡ Execute Routing Model</span>
                     </button>
                 </div>
@@ -91,7 +107,7 @@
             <div class="glass-card map-card">
                 <div class="map-stats-overlay">
                     <div class="stat-pill stat-quantum">
-                        <span>Routing Model:</span>
+                        <span>Hamiltonian Ground State:</span>
                         <span id="statQuantumDist">Calculating...</span>
                     </div>
                     <div class="stat-pill stat-classical">
@@ -105,15 +121,15 @@
             <!-- Inspector & Diagnostics -->
             <div class="glass-card">
                 <div class="tabs-header">
-                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Convergence & Penalty Diagnostics</button>
-                    <button class="tab-btn" data-tab="tabTable">📋 Optimized Tour Details</button>
+                    <button class="tab-btn active" data-tab="tabAnalytics">📊 Hamiltonian Energy Convergence</button>
+                    <button class="tab-btn" data-tab="tabTable">📋 Ground State Eigenvalues & Route</button>
                 </div>
 
                 <!-- Tab 1: Analytics & Convergence -->
                 <div class="tab-content active" id="tabAnalytics">
                     <div class="charts-grid">
                         <div style="grid-column: 1 / -1;">
-                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Total Energy Convergence (Distance + Constraint Penalty vs Step)</h4>
+                            <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Hamiltonian Expectation Value ⟨H⟩ vs Thermal Step</h4>
                             <div class="chart-container" style="height: 300px;">
                                 <canvas id="energyChart"></canvas>
                             </div>
@@ -127,11 +143,13 @@
                         <table class="custom-table">
                             <thead>
                                 <tr>
-                                    <th>Algorithm</th>
-                                    <th>Status</th>
-                                    <th>Base Distance (km)</th>
-                                    <th>Constraint Penalty (λ)</th>
-                                    <th>Total Energy</th>
+                                    <th>Model</th>
+                                    <th>State</th>
+                                    <th>H_cost (km)</th>
+                                    <th>A·H_city</th>
+                                    <th>B·H_step</th>
+                                    <th>C·H_region</th>
+                                    <th>Total ⟨H⟩</th>
                                     <th>Complete City Sequence</th>
                                 </tr>
                             </thead>

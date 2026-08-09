@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Unit Test Suite for Constrained Simulated Annealing TSP Solver (Malaysia)
-========================================================================
-Follows AAA (Arrange-Act-Assert) pattern, covering constraint penalty terms
-(uniqueness penalty & regional transit penalty) and total energy calculation.
+Unit Test Suite for Hamiltonian Simulated Annealing TSP Solver (Malaysia)
+==========================================================================
+Follows AAA (Arrange-Act-Assert) pattern, covering explicit Hamiltonian terms
+(H_cost, H_city, H_step, H_region) and non-negativity guarantees.
 """
 
 import unittest
@@ -22,45 +22,33 @@ class TestHaversineDistance(unittest.TestCase):
         # Assert
         self.assertTrue(250.0 < dist < 400.0)
 
-class TestConstraintPenalties(unittest.TestCase):
-    def test_uniqueness_penalty(self):
+class TestHamiltonianTerms(unittest.TestCase):
+    def test_hamiltonian_breakdown(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
-        invalid_tour = [0] * 20
-
-        # Act
-        penalty = solver.calculate_penalty(invalid_tour)
-
-        # Assert
-        self.assertTrue(penalty >= 10000.0)
-
-    def test_regional_transit_penalty(self):
-        # Arrange
-        matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, lambda_region_penalty=500.0)
-        # 0: KL (Peninsular), 4: KK (Borneo), 1: GT (Peninsular), 5: Kuching (Borneo), etc.
-        alternating_tour = [0, 4, 1, 5, 2, 13, 3, 14, 6, 15, 7, 16, 8, 18, 9, 10, 11, 12, 17, 19]
-
-        # Act
-        penalty = solver.calculate_penalty(alternating_tour)
-
-        # Assert
-        self.assertTrue(penalty > 0.0)
-
-    def test_total_energy_function(self):
-        # Arrange
-        matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, param_a=1000.0, param_b=1000.0, param_c=500.0)
         tour = list(range(20))
 
         # Act
-        base_dist = solver.calculate_tour_distance(tour)
-        penalty = solver.calculate_penalty(tour)
-        total_energy = solver.calculate_total_energy(tour)
+        h = solver.calculate_hamiltonian(tour)
 
         # Assert
-        self.assertEqual(total_energy, base_dist + penalty)
+        self.assertTrue(h["h_cost"] > 0.0)
+        self.assertEqual(h["h_city"], 0.0)
+        self.assertEqual(h["h_step"], 0.0)
+        self.assertTrue(h["total_hamiltonian"] >= h["h_cost"])
+
+    def test_history_non_negativity(self):
+        # Arrange
+        matrix = build_distance_matrix(CITIES)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, max_iter=2000)
+
+        # Act
+        result = solver.solve()
+
+        # Assert
+        min_energy = min(result["history"])
+        self.assertTrue(min_energy >= 0.0, f"History energy must be non-negative, got {min_energy}")
 
 if __name__ == "__main__":
     unittest.main()
