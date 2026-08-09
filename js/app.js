@@ -228,9 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }).addTo(state.map);
 
             const sample = saResult.bestValidSample;
-            const extraPenalty = sample.hCity + sample.hStep + sample.hRegion;
-            const penaltyStr = extraPenalty > 0 ? ` (+${extraPenalty.toFixed(0)} penalty)` : '';
-            statQuantumDist.textContent = `${sample.hCost.toFixed(1)} km${penaltyStr}`;
+            statQuantumDist.textContent = `${sample.hCost.toFixed(1)} km`;
         } else {
             statQuantumDist.textContent = "No valid route";
         }

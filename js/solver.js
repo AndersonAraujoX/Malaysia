@@ -2,7 +2,7 @@
  * High-Performance Hybrid Simulated Annealing & Metaheuristic TSP Solver (JavaScript)
  * Features Explicit Hamiltonian Operator Formulation:
  * H = H_cost + A * H_city + B * H_step + C * H_region
- * Supports Unconstrained State Exploration (City Replacements & Duplicates)
+ * Penalizes excess sea crossings (> 2 crossings) between Peninsular and Borneo.
  */
 
 class JSSimulatedAnnealingEngine {
@@ -58,7 +58,7 @@ class JSSimulatedAnnealingEngine {
         // 3. B * H_step: Step length mismatch penalty
         const hStep = Math.abs(this.N - tour.length) * this.paramB;
 
-        // 4. C * H_region: Inter-island sea crossing penalty (count * C)
+        // 4. C * H_region: Excess inter-island sea crossing penalty (> 2 crossings)
         let crossings = 0;
         const len = tour.length;
         for (let k = 0; k < len; k++) {
@@ -68,7 +68,8 @@ class JSSimulatedAnnealingEngine {
                 crossings++;
             }
         }
-        const hRegion = crossings * this.paramC;
+        const excessCrossings = Math.max(0, crossings - 2);
+        const hRegion = excessCrossings * this.paramC;
 
         const totalHamiltonian = hCost + hCity + hStep + hRegion;
 
@@ -203,7 +204,7 @@ class JSSimulatedAnnealingEngine {
                 bitstring: tour.join(' ➔ '),
                 probability: 1.0,
                 energy: h.totalHamiltonian,
-                isValid: (h.hCity === 0 && h.hStep === 0),
+                isValid: (h.hCity === 0 && h.hStep === 0 && h.hRegion === 0),
                 tourIndices: tour,
                 cityNames: cityNames,
                 totalDistance: h.hCost,
@@ -246,18 +247,15 @@ class JSSimulatedAnnealingEngine {
                 let candidateTour;
 
                 if (moveProb < 0.65) {
-                    // 2-Opt Subsegment Reversal
                     let i = Math.floor(Math.random() * (this.N - 1));
                     let j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
                     if (i === 0 && j === this.N - 1) j = this.N - 2;
                     candidateTour = this.apply2Opt(currentTour, i, j);
                 } else if (moveProb < 0.85) {
-                    // Node Relocation / Insertion
                     let i = Math.floor(Math.random() * this.N);
                     let j = Math.floor(Math.random() * this.N);
                     candidateTour = this.applyInsertion(currentTour, i, j);
                 } else {
-                    // Unconstrained State Replacement (Enabled when A is low)
                     let i = Math.floor(Math.random() * this.N);
                     let newCityId = Math.floor(Math.random() * this.N);
                     candidateTour = this.applyReplacement(currentTour, i, newCityId);
@@ -285,7 +283,6 @@ class JSSimulatedAnnealingEngine {
             }
         }
 
-        // Post-processing: Apply deterministic 2-Opt refinement (only if A is high enough)
         if (this.paramA >= 1000) {
             const refined = this.refine2Opt(globalBestTour);
             globalBestTour = refined.tour;
@@ -298,7 +295,7 @@ class JSSimulatedAnnealingEngine {
             bitstring: globalBestTour.join(' ➔ '),
             probability: 1.0,
             energy: hFinal.totalHamiltonian,
-            isValid: (hFinal.hCity === 0 && hFinal.hStep === 0),
+            isValid: (hFinal.hCity === 0 && hFinal.hStep === 0 && hFinal.hRegion === 0),
             tourIndices: globalBestTour,
             cityNames: cityNames,
             totalDistance: hFinal.hCost,
@@ -313,7 +310,7 @@ class JSSimulatedAnnealingEngine {
             finalExpectation: hFinal.totalHamiltonian,
             history: history,
             topSamples: [bestSample],
-            bestValidSample: bestSample
+            bestValidSample: sample => sample
         };
     }
 }

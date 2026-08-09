@@ -5,7 +5,7 @@ Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 State-of-the-art Hybrid Simulated Annealing solver for 20 major cities of 
 Malaysia featuring Explicit Hamiltonian Operator Formulation:
 H = H_cost + A * H_city + B * H_step + C * H_region
-Supports Unconstrained State Exploration (City Replacements & Duplicates).
+Penalizes excess sea crossings (> 2 crossings) between Peninsular and Borneo.
 """
 
 import math
@@ -95,7 +95,8 @@ class SimulatedAnnealingTSPSolver:
             if r1 and r2 and r1 != r2:
                 crossings += 1
 
-        h_region = crossings * self.param_c
+        excess_crossings = max(0, crossings - 2)
+        h_region = excess_crossings * self.param_c
         total = h_cost + h_city + h_step + h_region
 
         return {
