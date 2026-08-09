@@ -2,7 +2,7 @@
  * High-Performance Hybrid Simulated Annealing & Metaheuristic TSP Solver (JavaScript)
  * Features Explicit Hamiltonian Operator Formulation:
  * H = H_cost + A * H_city + B * H_step + C * H_region
- * Penalizes excess sea crossings (> 2 crossings) between Peninsular and Borneo.
+ * Supports Unconstrained State Exploration (City Replacements & Duplicates)
  */
 
 class JSSimulatedAnnealingEngine {
@@ -310,7 +310,7 @@ class JSSimulatedAnnealingEngine {
             finalExpectation: hFinal.totalHamiltonian,
             history: history,
             topSamples: [bestSample],
-            bestValidSample: sample => sample
+            bestValidSample: bestSample
         };
     }
 }

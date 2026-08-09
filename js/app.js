@@ -192,6 +192,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Helper: Safely resolve sample object
+    function getSampleObject(saResult) {
+        if (!saResult) return null;
+        if (saResult.bestValidSample && typeof saResult.bestValidSample === 'object') {
+            return saResult.bestValidSample;
+        }
+        if (Array.isArray(saResult.topSamples) && saResult.topSamples.length > 0) {
+            return saResult.topSamples[0];
+        }
+        return null;
+    }
+
     // 5. Update Map Polylines
     function drawRoutes(classicalResult, saResult, selectedCities) {
         if (state.classicalPolyline) state.map.removeLayer(state.classicalPolyline);
@@ -214,8 +226,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             statClassicalDist.textContent = `${classicalResult.totalDistance.toFixed(1)} km`;
         }
 
-        if (saResult && saResult.bestValidSample && saResult.bestValidSample.tourIndices) {
-            const saLatLons = saResult.bestValidSample.tourIndices.map(idx => {
+        const sample = getSampleObject(saResult);
+        if (sample && Array.isArray(sample.tourIndices)) {
+            const saLatLons = sample.tourIndices.map(idx => {
                 const c = selectedCities[idx];
                 return [c.lat, c.lon];
             });
@@ -227,8 +240,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 opacity: 0.95
             }).addTo(state.map);
 
-            const sample = saResult.bestValidSample;
-            statQuantumDist.textContent = `${sample.hCost.toFixed(1)} km`;
+            const dist = typeof sample.hCost === 'number' ? sample.hCost : (sample.totalDistance || 0);
+            statQuantumDist.textContent = `${dist.toFixed(1)} km`;
         } else {
             statQuantumDist.textContent = "No valid route";
         }
@@ -278,18 +291,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tableBody = document.getElementById('tableBody');
         if (tableBody) {
             tableBody.innerHTML = '';
-            const sample = solverRes.bestValidSample;
+            const sample = getSampleObject(solverRes);
             if (sample) {
+                const hCost = typeof sample.hCost === 'number' ? sample.hCost : 0;
+                const hCity = typeof sample.hCity === 'number' ? sample.hCity : 0;
+                const hStep = typeof sample.hStep === 'number' ? sample.hStep : 0;
+                const hRegion = typeof sample.hRegion === 'number' ? sample.hRegion : 0;
+                const energy = typeof sample.energy === 'number' ? sample.energy : 0;
+                const cityNames = Array.isArray(sample.cityNames) ? sample.cityNames.join(' ➔ ') : '';
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><code style="color:#00f2fe;">Hamiltonian SA</code></td>
                     <td><span class="tag-valid">${sample.isValid ? 'GROUND STATE' : 'EXCITED STATE'}</span></td>
-                    <td style="font-weight: 700; color: #00f2fe;">${sample.hCost.toFixed(1)} km</td>
-                    <td style="color:#f59e0b;">${sample.hCity.toFixed(1)}</td>
-                    <td style="color:#ec4899;">${sample.hStep.toFixed(1)}</td>
-                    <td style="color:#3b82f6;">${sample.hRegion.toFixed(1)}</td>
-                    <td style="font-family: var(--font-mono); color:#a855f7; font-weight:700;">${sample.energy.toFixed(1)}</td>
-                    <td style="font-size:0.82rem; color:#94a3b8; line-height: 1.4;">${sample.cityNames.join(' ➔ ')}</td>
+                    <td style="font-weight: 700; color: #00f2fe;">${hCost.toFixed(1)} km</td>
+                    <td style="color:#f59e0b;">${hCity.toFixed(1)}</td>
+                    <td style="color:#ec4899;">${hStep.toFixed(1)}</td>
+                    <td style="color:#3b82f6;">${hRegion.toFixed(1)}</td>
+                    <td style="font-family: var(--font-mono); color:#a855f7; font-weight:700;">${energy.toFixed(1)}</td>
+                    <td style="font-size:0.82rem; color:#94a3b8; line-height: 1.4;">${cityNames}</td>
                 `;
                 tableBody.appendChild(tr);
             }
