@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { MALAYSIA_CITIES, haversineDistance, buildFullDistanceMatrix } = require('../js/cities.js');
+const { MALAYSIA_CITIES, haversineDistance, buildFullDistanceMatrix, solveClassicalTSP } = require('../js/cities.js');
 const { JSSimulatedAnnealingEngine } = require('../js/solver.js');
 
 test('Haversine Distance - Happy Path', () => {
@@ -15,33 +15,32 @@ test('Haversine Distance - Happy Path', () => {
     assert.ok(dist > 250 && dist < 400, `Distance should be ~300km, got ${dist}`);
 });
 
-test('Unbiased Random Initial Tour Generation', () => {
+test('Exact Classical TSP Multi-Start 2-Opt Solver', () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
 
     // Act
-    const tour = engine.getRandomTour();
+    const classicalRes = solveClassicalTSP(MALAYSIA_CITIES, fullMatrix);
 
     // Assert
-    assert.equal(tour.length, 20, `Initial tour must contain 20 cities`);
-    assert.equal(new Set(tour).size, 20, `Initial tour must contain unique cities`);
+    assert.equal(classicalRes.tourIndices.length, 20);
+    assert.ok(classicalRes.totalDistance > 4000 && classicalRes.totalDistance < 6000, `Classical 2-Opt distance should be valid ground state (~4500-5000km), got ${classicalRes.totalDistance}`);
 });
 
-test('Hamiltonian Penalty Formulation - A = 1 and λ Impact', async () => {
+test('Hamiltonian Penalty Formulation - λ Parameter (0 to 1000)', async () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
 
-    // Act 1: Run with λ = 0 (Penalties ignored)
+    // Act 1: Run with λ = 0
     const engineLambda0 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 0.0);
     const resLambda0 = await engineLambda0.runSolver(20000);
 
-    // Act 2: Run with λ = 1000 (Sufficient penalty)
+    // Act 2: Run with λ = 1000
     const engineLambda1000 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 1000.0);
     const resLambda1000 = await engineLambda1000.runSolver(50000);
 
     // Assert
     assert.ok(resLambda0.bestValidSample, `Lambda 0 sample must exist`);
     assert.ok(resLambda1000.bestValidSample, `Lambda 1000 sample must exist`);
-    assert.equal(resLambda1000.bestValidSample.isValid, true, `High λ must yield valid ground state`);
+    assert.equal(resLambda1000.bestValidSample.isValid, true, `λ = 1000 must yield valid ground state`);
 });

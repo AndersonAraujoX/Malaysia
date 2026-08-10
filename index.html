@@ -63,13 +63,8 @@
                         <span>λ (Penalty Coefficient):</span>
                         <span class="slider-value" id="valLambda">1000</span>
                     </div>
-                    <input type="range" id="paramLambda" min="0" max="5000" step="50" value="1000">
+                    <input type="range" id="paramLambda" min="0" max="1000" step="10" value="1000">
                 </div>
-
-                <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-                    Formulation: <b>H = H<sub>cost</sub> + λ·(H<sub>city</sub> + H<sub>step</sub> + H<sub>region</sub>)</b> with <b>A = 1</b>.<br>
-                    When <b>λ = 0</b>, penalties are ignored and SA converges to infeasible routes (repeating nearby cities). Setting <b>λ ≥ 1000</b> forces SA to strictly converge to a valid ground state.
-                </p>
 
                 <!-- Action Button -->
                 <button id="runBtn" class="btn-primary">
