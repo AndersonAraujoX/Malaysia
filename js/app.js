@@ -209,17 +209,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             runBtn.disabled = true;
             runBtn.innerHTML = `<span>⏳ Finding Ground State...</span>`;
         }
+        statClassicalDist.textContent = 'Computing Held-Karp…';
 
         const selectedCities = MALAYSIA_CITIES.filter(c => state.selectedCityIds.has(c.id));
         const tInit = 5000.0;
         const maxIter = 50000;
         const alpha = 0.9995;
-
         const pLambda = paramLambdaSlider ? parseFloat(paramLambdaSlider.value) : 1000.0;
 
-        // 1. Classical Solution
-        const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
+        // 1. Exact Classical Solution via Held-Karp (run after one frame to allow UI to repaint)
+        const classicalRes = await new Promise(resolve =>
+            setTimeout(() => resolve(solveClassicalTSP(selectedCities, state.distMatrixFull)), 30)
+        );
         state.lastClassicalResult = classicalRes;
+        statClassicalDist.textContent = `${classicalRes.totalDistance.toFixed(1)} km ✓`;
 
         // 2. Initialize Routing Optimization Engine with Penalty Parameter λ (A = 1)
         const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, pLambda);

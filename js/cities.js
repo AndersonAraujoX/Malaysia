@@ -63,95 +63,121 @@ function buildFullDistanceMatrix() {
 }
 
 /**
- * Exact Classical TSP Solver using Multi-Start Nearest Neighbor + 2-Opt Local Search
+ * Exact Classical TSP Solver using Held-Karp Dynamic Programming Algorithm.
+ *
+ * Complexity: O(n² · 2ⁿ) time, O(n · 2ⁿ) space.
+ * Guarantees the globally optimal tour for any number of cities.
+ *
+ * For n ≤ 20 (this app's full set): ~100M ops, ~100MB RAM — feasible in browser.
+ * For n > 20, use a heuristic instead (e.g. Multi-Start 2-Opt).
+ *
+ * Algorithm Steps:
+ *   1. Initialize: dp[{0}][0] = 0 (start at city 0, zero distance)
+ *   2. For each subset S containing city 0, for each last city u ∈ S:
+ *        dp[S ∪ {v}][v] = min(dp[S][u] + dist[u][v]) for all v ∉ S
+ *   3. Optimal tour cost = min_u(dp[FULL][u] + dist[u][0])
+ *   4. Reconstruct path by tracing parent pointers back to city 0
+ *
+ * @param {Array} selectedCities - Array of city objects with .id, .lat, .lon
+ * @param {Array} distMatrixFull - 20×20 precomputed Haversine distance matrix
+ * @returns {{ tourIndices, cityNames, totalDistance }}
  */
 function solveClassicalTSP(selectedCities, distMatrixFull) {
     const n = selectedCities.length;
+
+    // --- Edge cases ---
     if (n === 0) return { tourIndices: [], cityNames: [], totalDistance: 0 };
     if (n === 1) return { tourIndices: [0], cityNames: [selectedCities[0].name], totalDistance: 0 };
+    if (n === 2) return {
+        tourIndices: [0, 1],
+        cityNames: selectedCities.map(c => c.name),
+        totalDistance: distMatrixFull[selectedCities[0].id][selectedCities[1].id] * 2
+    };
 
-    const distSub = Array.from({ length: n }, () => new Float64Array(n));
+    // --- Build local sub-distance matrix (local indices 0..n-1) ---
+    const dist = new Array(n);
     for (let i = 0; i < n; i++) {
+        dist[i] = new Float64Array(n);
         for (let j = 0; j < n; j++) {
-            distSub[i][j] = distMatrixFull[selectedCities[i].id][selectedCities[j].id];
+            dist[i][j] = distMatrixFull[selectedCities[i].id][selectedCities[j].id];
         }
     }
 
-    function calcDist(tour) {
-        let d = 0;
-        for (let k = 0; k < n; k++) {
-            d += distSub[tour[k]][tour[(k + 1) % n]];
-        }
-        return d;
-    }
+    const FULL_MASK = (1 << n) - 1;
+    const INF = Infinity;
 
-    function run2OptRefinement(initialTour) {
-        let tour = initialTour.slice();
-        let cost = calcDist(tour);
-        let improved = true;
+    // --- Held-Karp DP Tables ---
+    // dp[mask * n + i] = minimum distance to visit all cities in `mask`, ending at city i
+    // parent[mask * n + i] = predecessor city of i in the optimal sub-path
+    const dpSize = (1 << n) * n;
+    const dp = new Float32Array(dpSize).fill(INF);
+    const parent = new Int8Array(dpSize).fill(-1);
 
-        while (improved) {
-            improved = false;
-            for (let i = 0; i < n - 1; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    if (i === 0 && j === n - 1) continue;
-                    const newTour = tour.slice();
-                    let left = i, right = j;
-                    while (left < right) {
-                        const tmp = newTour[left];
-                        newTour[left] = newTour[right];
-                        newTour[right] = tmp;
-                        left++;
-                        right--;
-                    }
-                    const newCost = calcDist(newTour);
-                    if (newCost < cost - 1e-6) {
-                        cost = newCost;
-                        tour = newTour;
-                        improved = true;
-                    }
+    // Start: visit only city 0 with zero distance
+    dp[(1 << 0) * n + 0] = 0;
+
+    // --- DP Fill: iterate over all masks in ascending order ---
+    for (let mask = 1; mask <= FULL_MASK; mask++) {
+        // Only process masks that include the starting city (city 0)
+        if (!(mask & 1)) continue;
+
+        const baseIdx = mask * n;
+
+        for (let u = 0; u < n; u++) {
+            // u must be in the current mask
+            if (!(mask & (1 << u))) continue;
+
+            const dpU = dp[baseIdx + u];
+            if (dpU === INF) continue;
+
+            // Try extending the path from u to each unvisited city v
+            for (let v = 0; v < n; v++) {
+                if (mask & (1 << v)) continue; // v already visited
+
+                const newMask = mask | (1 << v);
+                const newCost = dpU + dist[u][v];
+                const newIdx = newMask * n + v;
+
+                if (newCost < dp[newIdx]) {
+                    dp[newIdx] = newCost;
+                    parent[newIdx] = u;
                 }
             }
         }
-        return { tour, cost };
     }
 
-    let globalBestTour = [];
-    let globalBestCost = Infinity;
+    // --- Find the globally optimal last city before returning to city 0 ---
+    let bestCost = INF;
+    let bestEnd = -1;
+    const fullBase = FULL_MASK * n;
 
-    // Multi-Start Nearest Neighbor across all starting cities + 2-Opt Refinement
-    for (let s = 0; s < n; s++) {
-        const unvisited = new Set(Array.from({ length: n }, (_, i) => i));
-        const nnTour = [s];
-        unvisited.delete(s);
-
-        let current = s;
-        while (unvisited.size > 0) {
-            let nearest = -1;
-            let minDist = Infinity;
-            for (const nbr of unvisited) {
-                const d = distSub[current][nbr];
-                if (d < minDist) {
-                    minDist = d;
-                    nearest = nbr;
-                }
-            }
-            nnTour.push(nearest);
-            unvisited.delete(nearest);
-            current = nearest;
-        }
-
-        const refined = run2OptRefinement(nnTour);
-        if (refined.cost < globalBestCost) {
-            globalBestCost = refined.cost;
-            globalBestTour = refined.tour;
+    for (let u = 1; u < n; u++) {
+        if (dp[fullBase + u] === INF) continue;
+        const roundTripCost = dp[fullBase + u] + dist[u][0];
+        if (roundTripCost < bestCost) {
+            bestCost = roundTripCost;
+            bestEnd = u;
         }
     }
+
+    // --- Reconstruct optimal tour by tracing parent pointers ---
+    const tour = [];
+    let mask = FULL_MASK;
+    let curr = bestEnd;
+
+    while (curr !== -1) {
+        tour.push(curr);
+        const prev = parent[mask * n + curr];
+        mask ^= (1 << curr); // remove curr from mask
+        curr = prev;
+    }
+
+    tour.reverse();
 
     return {
-        tourIndices: globalBestTour,
-        cityNames: globalBestTour.map(idx => selectedCities[idx].name),
-        totalDistance: globalBestCost
+        tourIndices: tour,
+        cityNames: tour.map(idx => selectedCities[idx].name),
+        totalDistance: bestCost
     };
 }
 
