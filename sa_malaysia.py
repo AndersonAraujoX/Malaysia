@@ -2,10 +2,12 @@
 """
 Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 ======================================================================
-State-of-the-art Hybrid Simulated Annealing solver for 20 major cities of 
-Malaysia featuring Explicit Hamiltonian Operator Formulation:
+Pure Simulated Annealing solver for 20 major cities of Malaysia featuring 
+Explicit Hamiltonian Operator Formulation:
 H = H_cost + A * H_city + B * H_step + C * H_region
-Penalizes excess sea crossings (> 2 crossings) between Peninsular and Borneo.
+
+Starts from unbiased random permutations (no Nearest Neighbor heuristics)
+and tracks the global best valid route found via 2-Opt and Insertion moves.
 """
 
 import math
@@ -112,30 +114,10 @@ class SimulatedAnnealingTSPSolver:
     def calculate_total_energy(self, tour):
         return self.calculate_hamiltonian(tour)["total_hamiltonian"]
 
-    def get_best_nearest_neighbor_tour(self):
-        if self.N == 0:
-            return []
-        best_tour = []
-        best_energy = float('inf')
-
-        for s in range(self.N):
-            unvisited = set(range(self.N))
-            tour = [s]
-            unvisited.remove(s)
-
-            current = s
-            while unvisited:
-                nearest = min(unvisited, key=lambda nbr: self.dist_matrix[current, nbr])
-                tour.append(nearest)
-                unvisited.remove(nearest)
-                current = nearest
-
-            energy = self.calculate_total_energy(tour)
-            if energy < best_energy:
-                best_energy = energy
-                best_tour = tour
-
-        return best_tour
+    def get_random_tour(self):
+        tour = list(range(self.N))
+        random.shuffle(tour)
+        return tour
 
     def apply_2opt(self, tour, i, j):
         new_tour = tour.copy()
@@ -148,31 +130,6 @@ class SimulatedAnnealingTSPSolver:
         new_tour.insert(to, node)
         return new_tour
 
-    def apply_replacement(self, tour, idx, new_city_id):
-        new_tour = tour.copy()
-        new_tour[idx] = new_city_id
-        return new_tour
-
-    def refine_2opt(self, tour):
-        current_tour = tour.copy()
-        current_energy = self.calculate_total_energy(current_tour)
-        improved = True
-
-        while improved:
-            improved = False
-            for i in range(self.N - 1):
-                for j in range(i + 1, self.N):
-                    if i == 0 and j == self.N - 1:
-                        continue
-                    candidate = self.apply_2opt(current_tour, i, j)
-                    cand_energy = self.calculate_total_energy(candidate)
-                    if cand_energy < current_energy - 1e-6:
-                        current_tour = candidate
-                        current_energy = cand_energy
-                        improved = True
-
-        return current_tour, current_energy
-
     def solve(self):
         if self.N == 0:
             return {
@@ -182,36 +139,36 @@ class SimulatedAnnealingTSPSolver:
                 "history": []
             }
 
-        global_best_tour = self.get_best_nearest_neighbor_tour()
+        global_best_tour = self.get_random_tour()
         global_best_energy = self.calculate_total_energy(global_best_tour)
 
         history = []
-        restarts = 4
+        restarts = 5
         iter_per_restart = max(1, self.max_iter // restarts)
 
         for r in range(restarts):
-            current_tour = global_best_tour.copy() if r == 0 else self.apply_2opt(global_best_tour, 1, self.N // 2)
+            current_tour = self.get_random_tour()
             current_energy = self.calculate_total_energy(current_tour)
+
+            if current_energy < global_best_energy:
+                global_best_tour = current_tour.copy()
+                global_best_energy = current_energy
 
             T = self.t_initial
 
             for step in range(iter_per_restart):
-                move_prob = random.random()
+                is_2opt = random.random() < 0.80
 
-                if move_prob < 0.65:
+                if is_2opt:
                     i = random.randint(0, self.N - 2)
                     j = random.randint(i + 1, self.N - 1)
                     if i == 0 and j == self.N - 1:
                         j = self.N - 2
                     candidate_tour = self.apply_2opt(current_tour, i, j)
-                elif move_prob < 0.85:
+                else:
                     i = random.randint(0, self.N - 1)
                     j = random.randint(0, self.N - 1)
                     candidate_tour = self.apply_insertion(current_tour, i, j)
-                else:
-                    i = random.randint(0, self.N - 1)
-                    new_city_id = random.randint(0, self.N - 1)
-                    candidate_tour = self.apply_replacement(current_tour, i, new_city_id)
 
                 candidate_energy = self.calculate_total_energy(candidate_tour)
                 delta_E = candidate_energy - current_energy
@@ -229,9 +186,6 @@ class SimulatedAnnealingTSPSolver:
                 if T < 1e-5:
                     break
 
-        if self.param_a >= 1000:
-            global_best_tour, _ = self.refine_2opt(global_best_tour)
-
         h_final = self.calculate_hamiltonian(global_best_tour)
 
         return {
@@ -248,7 +202,7 @@ class SimulatedAnnealingTSPSolver:
 
 if __name__ == "__main__":
     print("=" * 75)
-    print(f"  HAMILTONIAN TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
+    print(f"  HAMILTONIAN PURE SA TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
     print("=" * 75)
 
     dist_mat = build_distance_matrix(CITIES)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Unit Test Suite for Hamiltonian Simulated Annealing TSP Solver (Malaysia)
-==========================================================================
-Follows AAA (Arrange-Act-Assert) pattern, covering dynamic scaling of
-Hamiltonian parameters A, B, C and non-negativity guarantees.
+Unit Test Suite for Pure Simulated Annealing TSP Solver (Malaysia)
+===================================================================
+Follows AAA (Arrange-Act-Assert) pattern, testing unbiased random initial
+tours, 2-Opt neighborhood moves, and ground state convergence.
 """
 
 import unittest
@@ -22,38 +22,42 @@ class TestHaversineDistance(unittest.TestCase):
         # Assert
         self.assertTrue(250.0 < dist < 400.0)
 
-class TestHamiltonianDynamicParameters(unittest.TestCase):
-    def test_parameter_a_impact(self):
+class TestPureSimulatedAnnealing(unittest.TestCase):
+    def test_random_tour_generation(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        tour_dup = [0, 0] + list(range(2, 20))
-
-        # Act 1: A = 0
-        solver_a0 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_a=0.0)
-        h0 = solver_a0.calculate_hamiltonian(tour_dup)
-
-        # Act 2: A = 2000
-        solver_a2000 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_a=2000.0)
-        h2000 = solver_a2000.calculate_hamiltonian(tour_dup)
-
-        # Assert
-        self.assertEqual(h0["h_city"], 0.0)
-        self.assertEqual(h2000["h_city"], 2000.0)
-
-    def test_parameter_c_impact(self):
-        # Arrange
-        matrix = build_distance_matrix(CITIES)
-        tour_valid = list(range(20))
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
 
         # Act
-        solver_c500 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_c=500.0)
-        h_c500 = solver_c500.calculate_hamiltonian(tour_valid)
-
-        solver_c2000 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_c=2000.0)
-        h_c2000 = solver_c2000.calculate_hamiltonian(tour_valid)
+        tour = solver.get_random_tour()
 
         # Assert
-        self.assertTrue(h_c2000["h_region"] > h_c500["h_region"])
+        self.assertEqual(len(tour), 20)
+        self.assertEqual(len(set(tour)), 20)
+
+    def test_2opt_neighborhood_reversal(self):
+        # Arrange
+        matrix = build_distance_matrix(CITIES)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
+        tour = [0, 1, 2, 3, 4, 5]
+
+        # Act
+        reversed_tour = solver.apply_2opt(tour, 1, 4)
+
+        # Assert
+        self.assertEqual(reversed_tour, [0, 4, 3, 2, 1, 5])
+
+    def test_ground_state_convergence(self):
+        # Arrange
+        matrix = build_distance_matrix(CITIES)
+        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, max_iter=50000)
+
+        # Act
+        result = solver.solve()
+
+        # Assert
+        self.assertEqual(len(result["best_tour_indices"]), 20)
+        self.assertTrue(result["best_distance_km"] < 6000.0, f"Distance should be < 6000km, got {result['best_distance_km']}")
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,8 +1,9 @@
 /**
- * High-Performance Hybrid Simulated Annealing & Metaheuristic TSP Solver (JavaScript)
+ * High-Performance Pure Simulated Annealing TSP Solver (JavaScript)
  * Features Explicit Hamiltonian Operator Formulation:
  * H = H_cost + A * H_city + B * H_step + C * H_region
- * Supports Unconstrained State Exploration (City Replacements & Duplicates)
+ * Starts from unbiased random permutations (no Nearest Neighbor heuristics)
+ * Uses high-quality 2-Opt subsegment reversal and Node Insertion neighborhood moves.
  */
 
 class JSSimulatedAnnealingEngine {
@@ -92,44 +93,23 @@ class JSSimulatedAnnealingEngine {
     }
 
     /**
-     * Best Nearest Neighbor Tour across all possible starting cities - O(N^2)
+     * Unbiased Random Tour Generation (Fisher-Yates Shuffle)
+     * Completely non-heuristic initial state
      */
-    getBestNearestNeighborTour() {
-        if (this.N === 0) return [];
-        let bestTour = [];
-        let bestEnergy = Infinity;
-
-        for (let s = 0; s < this.N; s++) {
-            const unvisited = new Set(Array.from({ length: this.N }, (_, i) => i));
-            const tour = [s];
-            unvisited.delete(s);
-
-            let current = s;
-            while (unvisited.size > 0) {
-                let nearest = -1;
-                let minDist = Infinity;
-                for (const nbr of unvisited) {
-                    const d = this.distMatrix[current][nbr];
-                    if (d < minDist) {
-                        minDist = d;
-                        nearest = nbr;
-                    }
-                }
-                tour.push(nearest);
-                unvisited.delete(nearest);
-                current = nearest;
-            }
-
-            const energy = this.calculateTotalEnergy(tour);
-            if (energy < bestEnergy) {
-                bestEnergy = energy;
-                bestTour = tour;
-            }
+    getRandomTour() {
+        const tour = Array.from({ length: this.N }, (_, i) => i);
+        for (let i = this.N - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const tmp = tour[i];
+            tour[i] = tour[j];
+            tour[j] = tmp;
         }
-
-        return bestTour;
+        return tour;
     }
 
+    /**
+     * 2-Opt Subsegment Reversal Neighborhood Operator
+     */
     apply2Opt(tour, i, j) {
         const newTour = tour.slice();
         let left = i, right = j;
@@ -143,6 +123,9 @@ class JSSimulatedAnnealingEngine {
         return newTour;
     }
 
+    /**
+     * Node Relocation / Insertion Neighborhood Operator
+     */
     applyInsertion(tour, from, to) {
         const newTour = tour.slice();
         const [node] = newTour.splice(from, 1);
@@ -150,40 +133,9 @@ class JSSimulatedAnnealingEngine {
         return newTour;
     }
 
-    applyReplacement(tour, idx, newCityId) {
-        const newTour = tour.slice();
-        newTour[idx] = newCityId;
-        return newTour;
-    }
-
     /**
-     * Deterministic 2-Opt local search refinement pass
-     */
-    refine2Opt(tour) {
-        let currentTour = tour.slice();
-        let currentEnergy = this.calculateTotalEnergy(currentTour);
-        let improved = true;
-
-        while (improved) {
-            improved = false;
-            for (let i = 0; i < this.N - 1; i++) {
-                for (let j = i + 1; j < this.N; j++) {
-                    if (i === 0 && j === this.N - 1) continue;
-                    const candidate = this.apply2Opt(currentTour, i, j);
-                    const candidateEnergy = this.calculateTotalEnergy(candidate);
-                    if (candidateEnergy < currentEnergy - 1e-6) {
-                        currentTour = candidate;
-                        currentEnergy = candidateEnergy;
-                        improved = true;
-                    }
-                }
-            }
-        }
-        return { tour: currentTour, energy: currentEnergy };
-    }
-
-    /**
-     * High-Performance Hybrid Simulated Annealing Execution for Hamiltonian Ground State
+     * Original Pure Simulated Annealing Execution
+     * Starts from random initial state and tracks absolute global best tour found
      */
     async runSolver(maxIter = 50000, onProgress = null) {
         if (this.N === 0) {
@@ -222,43 +174,41 @@ class JSSimulatedAnnealingEngine {
             };
         }
 
-        let globalBestTour = (this.paramA === 0 && this.paramB === 0 && this.paramC === 0) ? 
-            Array.from({ length: this.N }, (_, i) => i) : 
-            this.getBestNearestNeighborTour();
-            
+        let globalBestTour = this.getRandomTour();
         let globalBestEnergy = this.calculateTotalEnergy(globalBestTour);
 
         const history = [];
-        const restarts = 4;
+        const restarts = 5;
         const iterPerRestart = Math.floor(maxIter / restarts);
         const updateInterval = Math.max(1, Math.floor(maxIter / 50));
 
         let currentStep = 0;
 
         for (let r = 0; r < restarts; r++) {
-            let currentTour = (r === 0) ? globalBestTour.slice() : this.apply2Opt(globalBestTour, 1, Math.floor(this.N / 2));
+            let currentTour = this.getRandomTour();
             let currentEnergy = this.calculateTotalEnergy(currentTour);
+
+            if (currentEnergy < globalBestEnergy) {
+                globalBestTour = currentTour.slice();
+                globalBestEnergy = currentEnergy;
+            }
 
             let T = this.tInitial;
 
             for (let step = 1; step <= iterPerRestart; step++) {
                 currentStep++;
-                const moveProb = Math.random();
+                const is2Opt = Math.random() < 0.80;
                 let candidateTour;
 
-                if (moveProb < 0.65) {
+                if (is2Opt) {
                     let i = Math.floor(Math.random() * (this.N - 1));
                     let j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
                     if (i === 0 && j === this.N - 1) j = this.N - 2;
                     candidateTour = this.apply2Opt(currentTour, i, j);
-                } else if (moveProb < 0.85) {
+                } else {
                     let i = Math.floor(Math.random() * this.N);
                     let j = Math.floor(Math.random() * this.N);
                     candidateTour = this.applyInsertion(currentTour, i, j);
-                } else {
-                    let i = Math.floor(Math.random() * this.N);
-                    let newCityId = Math.floor(Math.random() * this.N);
-                    candidateTour = this.applyReplacement(currentTour, i, newCityId);
                 }
 
                 const candidateEnergy = this.calculateTotalEnergy(candidateTour);
@@ -281,11 +231,6 @@ class JSSimulatedAnnealingEngine {
                     onProgress(currentStep, currentEnergy);
                 }
             }
-        }
-
-        if (this.paramA >= 1000) {
-            const refined = this.refine2Opt(globalBestTour);
-            globalBestTour = refined.tour;
         }
 
         const hFinal = this.calculateHamiltonian(globalBestTour);
