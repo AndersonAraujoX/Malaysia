@@ -1,6 +1,6 @@
 /**
  * Main Web Application Controller & Leaflet Integration
- * Traveling Salesperson Routing Model with Explicit Hamiltonian Multipliers (A, B, C)
+ * Traveling Salesperson Routing Model with Constraint Penalty Parameter λ (A = 1)
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -20,14 +20,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cityListEl = document.getElementById('cityList');
     const runBtn = document.getElementById('runBtn');
 
-    const paramASlider = document.getElementById('paramA');
-    const valAEl = document.getElementById('valA');
-    const paramBSlider = document.getElementById('paramB');
-    const valBEl = document.getElementById('valB');
-    const paramCSlider = document.getElementById('paramC');
-    const valCEl = document.getElementById('valC');
+    const paramLambdaSlider = document.getElementById('paramLambda');
+    const valLambdaEl = document.getElementById('valLambda');
 
     const qubitCountBadge = document.getElementById('qubitCountBadge');
+    const pillQuantum = document.getElementById('pillQuantum');
+    const statQuantumLabel = document.getElementById('statQuantumLabel');
     const statQuantumDist = document.getElementById('statQuantumDist');
     const statClassicalDist = document.getElementById('statClassicalDist');
 
@@ -135,14 +133,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         qubitCountBadge.textContent = `${numSelected} Cities | Hamiltonian Solver`;
     }
 
-    if (paramASlider && valAEl) {
-        paramASlider.addEventListener('input', (e) => valAEl.textContent = e.target.value);
-    }
-    if (paramBSlider && valBEl) {
-        paramBSlider.addEventListener('input', (e) => valBEl.textContent = e.target.value);
-    }
-    if (paramCSlider && valCEl) {
-        paramCSlider.addEventListener('input', (e) => valCEl.textContent = e.target.value);
+    if (paramLambdaSlider && valLambdaEl) {
+        paramLambdaSlider.addEventListener('input', (e) => valLambdaEl.textContent = e.target.value);
     }
 
     // Helper: Safely resolve sample object
@@ -187,14 +179,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             saLatLons.push(saLatLons[0]);
 
+            const isRouteValid = sample.isValid;
             state.saPolyline = L.polyline(saLatLons, {
-                color: '#00f2fe',
+                color: isRouteValid ? '#00f2fe' : '#ef4444',
                 weight: 5,
-                opacity: 0.95
+                opacity: 0.95,
+                dashArray: isRouteValid ? null : '8, 8'
             }).addTo(state.map);
 
             const dist = typeof sample.hCost === 'number' ? sample.hCost : (sample.totalDistance || 0);
-            statQuantumDist.textContent = `${dist.toFixed(1)} km`;
+            
+            if (isRouteValid) {
+                statQuantumLabel.textContent = "Hamiltonian Ground State:";
+                statQuantumDist.textContent = `${dist.toFixed(1)} km`;
+                if (pillQuantum) pillQuantum.style.borderColor = "rgba(0, 242, 254, 0.4)";
+            } else {
+                statQuantumLabel.textContent = "Infeasible Route (λ = 0):";
+                statQuantumDist.textContent = `${dist.toFixed(1)} km (Duplicates)`;
+                if (pillQuantum) pillQuantum.style.borderColor = "rgba(239, 68, 68, 0.7)";
+            }
         } else {
             statQuantumDist.textContent = "No valid route";
         }
@@ -212,16 +215,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const maxIter = 50000;
         const alpha = 0.9995;
 
-        const pA = paramASlider ? parseFloat(paramASlider.value) : 1000.0;
-        const pB = paramBSlider ? parseFloat(paramBSlider.value) : 1000.0;
-        const pC = paramCSlider ? parseFloat(paramCSlider.value) : 500.0;
+        const pLambda = paramLambdaSlider ? parseFloat(paramLambdaSlider.value) : 1000.0;
 
         // 1. Classical Solution
         const classicalRes = solveClassicalTSP(selectedCities, state.distMatrixFull);
         state.lastClassicalResult = classicalRes;
 
-        // 2. Initialize Routing Optimization Engine with Explicit Hamiltonian Parameters
-        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, pA, pB, pC);
+        // 2. Initialize Routing Optimization Engine with Penalty Parameter λ (A = 1)
+        const solverEngine = new JSSimulatedAnnealingEngine(selectedCities, state.distMatrixFull, tInit, alpha, pLambda);
 
         // 3. Run Simulation
         const solverRes = await solverEngine.runSolver(maxIter);

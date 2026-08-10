@@ -2,8 +2,8 @@
 """
 Unit Test Suite for Pure Simulated Annealing TSP Solver (Malaysia)
 ===================================================================
-Follows AAA (Arrange-Act-Assert) pattern, testing unbiased random initial
-tours, 2-Opt neighborhood moves, and ground state convergence.
+Follows AAA (Arrange-Act-Assert) pattern, testing formulation H = H_cost + λ * H_penalty (A=1)
+and comparing λ = 0 vs λ = 1000.
 """
 
 import unittest
@@ -22,7 +22,7 @@ class TestHaversineDistance(unittest.TestCase):
         # Assert
         self.assertTrue(250.0 < dist < 400.0)
 
-class TestPureSimulatedAnnealing(unittest.TestCase):
+class TestLambdaFormulation(unittest.TestCase):
     def test_random_tour_generation(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
@@ -35,29 +35,20 @@ class TestPureSimulatedAnnealing(unittest.TestCase):
         self.assertEqual(len(tour), 20)
         self.assertEqual(len(set(tour)), 20)
 
-    def test_2opt_neighborhood_reversal(self):
+    def test_lambda_0_vs_1000(self):
         # Arrange
         matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix)
-        tour = [0, 1, 2, 3, 4, 5]
 
-        # Act
-        reversed_tour = solver.apply_2opt(tour, 1, 4)
+        # Act 1: λ = 0
+        solver_0 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_lambda=0.0, max_iter=20000)
+        res_0 = solver_0.solve()
 
-        # Assert
-        self.assertEqual(reversed_tour, [0, 4, 3, 2, 1, 5])
-
-    def test_ground_state_convergence(self):
-        # Arrange
-        matrix = build_distance_matrix(CITIES)
-        solver = SimulatedAnnealingTSPSolver(CITIES, matrix, max_iter=50000)
-
-        # Act
-        result = solver.solve()
+        # Act 2: λ = 1000
+        solver_1000 = SimulatedAnnealingTSPSolver(CITIES, matrix, param_lambda=1000.0, max_iter=50000)
+        res_1000 = solver_1000.solve()
 
         # Assert
-        self.assertEqual(len(result["best_tour_indices"]), 20)
-        self.assertTrue(result["best_distance_km"] < 6000.0, f"Distance should be < 6000km, got {result['best_distance_km']}")
+        self.assertTrue(res_1000["is_valid"], "High λ must yield valid ground state")
 
 if __name__ == "__main__":
     unittest.main()

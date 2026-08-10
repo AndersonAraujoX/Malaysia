@@ -4,10 +4,13 @@ Simulated Annealing (SA) TSP Solver - 20 Important Cities of Malaysia
 ======================================================================
 Pure Simulated Annealing solver for 20 major cities of Malaysia featuring 
 Explicit Hamiltonian Operator Formulation:
-H = H_cost + A * H_city + B * H_step + C * H_region
+H = H_cost + λ * (H_city + H_step + H_region)
+
+A = 1 (Fixed Physical Distance Weight)
+λ = Constraint Penalty Parameter
 
 Starts from unbiased random permutations (no Nearest Neighbor heuristics)
-and tracks the global best valid route found via 2-Opt and Insertion moves.
+and tracks the global best route found via 2-Opt, Insertion, and Replacement moves.
 """
 
 import math
@@ -59,16 +62,14 @@ def build_distance_matrix(cities):
     return matrix
 
 class SimulatedAnnealingTSPSolver:
-    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9995, max_iter=50000, param_a=1000.0, param_b=1000.0, param_c=500.0):
+    def __init__(self, cities, dist_matrix, t_initial=5000.0, alpha=0.9995, max_iter=50000, param_lambda=1000.0):
         self.cities = cities
         self.N = len(cities)
         self.dist_matrix = dist_matrix
         self.t_initial = t_initial
         self.alpha = alpha
         self.max_iter = max_iter
-        self.param_a = param_a
-        self.param_b = param_b
-        self.param_c = param_c
+        self.param_lambda = param_lambda # Penalty coefficient λ (A=1 fixed, B=C=λ)
 
     def calculate_tour_distance(self, tour):
         if not tour or len(tour) == 0:
@@ -86,8 +87,8 @@ class SimulatedAnnealingTSPSolver:
         h_cost = self.calculate_tour_distance(tour)
         unique_count = len(set(tour))
         missing_cities = self.N - unique_count
-        h_city = missing_cities * self.param_a
-        h_step = abs(self.N - len(tour)) * self.param_b
+        h_city = missing_cities * self.param_lambda
+        h_step = abs(self.N - len(tour)) * self.param_lambda
 
         crossings = 0
         n_tour = len(tour)
@@ -98,7 +99,7 @@ class SimulatedAnnealingTSPSolver:
                 crossings += 1
 
         excess_crossings = max(0, crossings - 2)
-        h_region = excess_crossings * self.param_c
+        h_region = excess_crossings * self.param_lambda
         total = h_cost + h_city + h_step + h_region
 
         return {
@@ -130,6 +131,11 @@ class SimulatedAnnealingTSPSolver:
         new_tour.insert(to, node)
         return new_tour
 
+    def apply_replacement(self, tour, idx, new_city_id):
+        new_tour = tour.copy()
+        new_tour[idx] = new_city_id
+        return new_tour
+
     def solve(self):
         if self.N == 0:
             return {
@@ -157,9 +163,13 @@ class SimulatedAnnealingTSPSolver:
             T = self.t_initial
 
             for step in range(iter_per_restart):
-                is_2opt = random.random() < 0.80
+                move_prob = random.random()
 
-                if is_2opt:
+                if self.param_lambda < 500 and move_prob > 0.70:
+                    i = random.randint(0, self.N - 1)
+                    new_city_id = random.randint(0, self.N - 1)
+                    candidate_tour = self.apply_replacement(current_tour, i, new_city_id)
+                elif move_prob < 0.80:
                     i = random.randint(0, self.N - 2)
                     j = random.randint(i + 1, self.N - 1)
                     if i == 0 and j == self.N - 1:
@@ -197,24 +207,23 @@ class SimulatedAnnealingTSPSolver:
             "h_step": h_final["h_step"],
             "h_region": h_final["h_region"],
             "total_energy": h_final["total_hamiltonian"],
+            "is_valid": (h_final["missing_cities"] == 0 and h_final["h_step"] == 0 and h_final["h_region"] == 0),
             "history": history
         }
 
 if __name__ == "__main__":
     print("=" * 75)
-    print(f"  HAMILTONIAN PURE SA TSP SOLVER - MALAYSIA {len(CITIES)} CITIES")
+    print(f"  HAMILTONIAN PURE SA TSP SOLVER (A=1, λ) - MALAYSIA {len(CITIES)} CITIES")
     print("=" * 75)
 
     dist_mat = build_distance_matrix(CITIES)
-    sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=5000.0, alpha=0.9995, max_iter=50000)
+    sa_solver = SimulatedAnnealingTSPSolver(CITIES, dist_mat, t_initial=5000.0, alpha=0.9995, max_iter=50000, param_lambda=1000.0)
     result = sa_solver.solve()
 
     print(f"\n1. Ground State Route Found ({len(CITIES)} Cities):")
     print(f"   Route: {' -> '.join(result['best_tour_names'])} -> {result['best_tour_names'][0]}")
     print(f"   H_cost: {result['h_cost']:.2f} km")
-    print(f"   A*H_city: {result['h_city']:.2f}")
-    print(f"   B*H_step: {result['h_step']:.2f}")
-    print(f"   C*H_region: {result['h_region']:.2f}")
-    print(f"   Total Ground State Energy <H>: {result['total_energy']:.2f}")
-    print(f"   Executed Iterations: {len(result['history'])}")
+    print(f"   λ * Violations: {result['total_energy'] - result['h_cost']:.2f}")
+    print(f"   Total Energy <H>: {result['total_energy']:.2f}")
+    print(f"   Valid State: {result['is_valid']}")
     print("=" * 75)

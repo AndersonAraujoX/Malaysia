@@ -52,38 +52,23 @@
                 </div>
             </div>
 
-            <!-- Hamiltonian Operator Parameters Card -->
+            <!-- Hamiltonian Operator Parameter (λ) Card -->
             <div class="glass-card">
                 <div class="card-header">
-                    <h3>⚛️ Hamiltonian Multipliers (A, B, C)</h3>
+                    <h3>⚛️ Constraint Penalty Parameter (λ)</h3>
                 </div>
 
                 <div class="slider-group">
                     <div class="slider-label">
-                        <span>A (City Uniqueness Penalty):</span>
-                        <span class="slider-value" id="valA">1000</span>
+                        <span>λ (Penalty Coefficient):</span>
+                        <span class="slider-value" id="valLambda">1000</span>
                     </div>
-                    <input type="range" id="paramA" min="0" max="5000" step="100" value="1000">
+                    <input type="range" id="paramLambda" min="0" max="5000" step="50" value="1000">
                 </div>
 
-                <div class="slider-group">
-                    <div class="slider-label">
-                        <span>B (Step Uniqueness Penalty):</span>
-                        <span class="slider-value" id="valB">1000</span>
-                    </div>
-                    <input type="range" id="paramB" min="0" max="5000" step="100" value="1000">
-                </div>
-
-                <div class="slider-group">
-                    <div class="slider-label">
-                        <span>C (Regional Transit Penalty):</span>
-                        <span class="slider-value" id="valC">500</span>
-                    </div>
-                    <input type="range" id="paramC" min="0" max="2000" step="50" value="500">
-                </div>
-
-                <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-                    When <b>A=0, B=0, C=0</b>, constraint penalties are ignored and SA may converge to invalid or high-crossing routes. Setting high coefficients forces SA to strictly avoid violations.
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
+                    Formulation: <b>H = H<sub>cost</sub> + λ·(H<sub>city</sub> + H<sub>step</sub> + H<sub>region</sub>)</b> with <b>A = 1</b>.<br>
+                    When <b>λ = 0</b>, penalties are ignored and SA converges to infeasible routes (repeating nearby cities). Setting <b>λ ≥ 1000</b> forces SA to strictly converge to a valid ground state.
                 </p>
 
                 <!-- Action Button -->
@@ -100,8 +85,8 @@
             <!-- Interactive Map Card -->
             <div class="glass-card map-card">
                 <div class="map-stats-overlay">
-                    <div class="stat-pill stat-quantum">
-                        <span>Hamiltonian Ground State:</span>
+                    <div class="stat-pill stat-quantum" id="pillQuantum">
+                        <span id="statQuantumLabel">Hamiltonian Ground State:</span>
                         <span id="statQuantumDist">Calculating...</span>
                     </div>
                     <div class="stat-pill stat-classical">

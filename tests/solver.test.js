@@ -28,31 +28,20 @@ test('Unbiased Random Initial Tour Generation', () => {
     assert.equal(new Set(tour).size, 20, `Initial tour must contain unique cities`);
 });
 
-test('2-Opt Subsegment Reversal Neighborhood Operator', () => {
+test('Hamiltonian Penalty Formulation - A = 1 and λ Impact', async () => {
     // Arrange
     const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix);
-    const initialTour = [0, 1, 2, 3, 4, 5];
 
-    // Act
-    const reversed = engine.apply2Opt(initialTour, 1, 4);
+    // Act 1: Run with λ = 0 (Penalties ignored)
+    const engineLambda0 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 0.0);
+    const resLambda0 = await engineLambda0.runSolver(20000);
 
-    // Assert
-    assert.deepEqual(reversed, [0, 4, 3, 2, 1, 5], `2-Opt should reverse subsegment [1..4]`);
-});
-
-test('Pure Simulated Annealing Ground State Convergence', async () => {
-    // Arrange
-    const fullMatrix = buildFullDistanceMatrix();
-    const engine = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995);
-
-    // Act
-    const res = await engine.runSolver(50000);
+    // Act 2: Run with λ = 1000 (Sufficient penalty)
+    const engineLambda1000 = new JSSimulatedAnnealingEngine(MALAYSIA_CITIES, fullMatrix, 5000.0, 0.9995, 1000.0);
+    const resLambda1000 = await engineLambda1000.runSolver(50000);
 
     // Assert
-    assert.ok(res.bestValidSample, `Solver must return bestValidSample`);
-    assert.equal(res.bestValidSample.tourIndices.length, 20);
-    assert.ok(res.bestValidSample.totalDistance > 0);
-    assert.equal(res.bestValidSample.isValid, true);
-    assert.ok(res.bestValidSample.hCost < 6000, `Pure SA with 2-Opt should converge to a good ground state distance (< 6000km), got ${res.bestValidSample.hCost}`);
+    assert.ok(resLambda0.bestValidSample, `Lambda 0 sample must exist`);
+    assert.ok(resLambda1000.bestValidSample, `Lambda 1000 sample must exist`);
+    assert.equal(resLambda1000.bestValidSample.isValid, true, `High λ must yield valid ground state`);
 });

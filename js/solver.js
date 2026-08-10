@@ -1,20 +1,22 @@
 /**
  * High-Performance Pure Simulated Annealing TSP Solver (JavaScript)
  * Features Explicit Hamiltonian Operator Formulation:
- * H = H_cost + A * H_city + B * H_step + C * H_region
- * Starts from unbiased random permutations (no Nearest Neighbor heuristics)
- * Uses high-quality 2-Opt subsegment reversal and Node Insertion neighborhood moves.
+ * H = H_cost + λ * (H_city + H_step + H_region)
+ *
+ * A = 1 (Fixed Physical Distance Weight)
+ * λ = Constraint Penalty Parameter
+ *
+ * When λ = 0, constraint penalties are ignored and SA converges to infeasible routes.
+ * When λ is high (λ ≥ 1000), SA strictly eliminates violations and converges to a valid ground state.
  */
 
 class JSSimulatedAnnealingEngine {
-    constructor(selectedCities, distMatrixFull, tInitial = 5000.0, alpha = 0.9995, paramA = 1000.0, paramB = 1000.0, paramC = 500.0) {
+    constructor(selectedCities, distMatrixFull, tInitial = 5000.0, alpha = 0.9995, paramLambda = 1000.0) {
         this.selectedCities = selectedCities || [];
         this.N = this.selectedCities.length;
         this.tInitial = tInitial;
         this.alpha = alpha;
-        this.paramA = paramA;
-        this.paramB = paramB;
-        this.paramC = paramC;
+        this.paramLambda = paramLambda; // Penalty coefficient λ (B = C = λ)
 
         this.distMatrix = Array.from({ length: this.N }, () => new Float64Array(this.N));
         for (let i = 0; i < this.N; i++) {
@@ -41,25 +43,25 @@ class JSSimulatedAnnealingEngine {
 
     /**
      * Complete Hamiltonian Evaluation:
-     * H = H_cost + A * H_city + B * H_step + C * H_region
+     * H = H_cost + λ * (H_city + H_step + H_region)
      */
     calculateHamiltonian(tour) {
         if (!tour || tour.length === 0) {
             return { hCost: 0, hCity: 0, hStep: 0, hRegion: 0, missingCities: 0, crossings: 0, totalHamiltonian: 0 };
         }
 
-        // 1. H_cost: Physical distance
+        // 1. Physical Distance Term (Weight A = 1.0)
         const hCost = this.calculateTourDistance(tour);
 
-        // 2. A * H_city: Uniqueness penalty (missing/duplicate cities)
+        // 2. Missing/Duplicate Cities Violation Count
         const uniqueSet = new Set(tour);
         const missingCities = this.N - uniqueSet.size;
-        const hCity = missingCities * this.paramA;
+        const hCity = missingCities * this.paramLambda;
 
-        // 3. B * H_step: Step length mismatch penalty
-        const hStep = Math.abs(this.N - tour.length) * this.paramB;
+        // 3. Step Length Violation Count
+        const hStep = Math.abs(this.N - tour.length) * this.paramLambda;
 
-        // 4. C * H_region: Excess inter-island sea crossing penalty (> 2 crossings)
+        // 4. Excess Inter-island Sea Crossing Violation Count (> 2 crossings)
         let crossings = 0;
         const len = tour.length;
         for (let k = 0; k < len; k++) {
@@ -70,9 +72,10 @@ class JSSimulatedAnnealingEngine {
             }
         }
         const excessCrossings = Math.max(0, crossings - 2);
-        const hRegion = excessCrossings * this.paramC;
+        const hRegion = excessCrossings * this.paramLambda;
 
-        const totalHamiltonian = hCost + hCity + hStep + hRegion;
+        const totalPenalty = hCity + hStep + hRegion;
+        const totalHamiltonian = hCost + totalPenalty;
 
         return {
             hCost,
@@ -81,6 +84,7 @@ class JSSimulatedAnnealingEngine {
             hRegion,
             missingCities,
             crossings,
+            totalPenalty,
             totalHamiltonian
         };
     }
@@ -94,7 +98,6 @@ class JSSimulatedAnnealingEngine {
 
     /**
      * Unbiased Random Tour Generation (Fisher-Yates Shuffle)
-     * Completely non-heuristic initial state
      */
     getRandomTour() {
         const tour = Array.from({ length: this.N }, (_, i) => i);
@@ -134,8 +137,16 @@ class JSSimulatedAnnealingEngine {
     }
 
     /**
+     * City Replacement Move (Allows exploring unconstrained/duplicate states when λ is low)
+     */
+    applyReplacement(tour, idx, newCityId) {
+        const newTour = tour.slice();
+        newTour[idx] = newCityId;
+        return newTour;
+    }
+
+    /**
      * Original Pure Simulated Annealing Execution
-     * Starts from random initial state and tracks absolute global best tour found
      */
     async runSolver(maxIter = 50000, onProgress = null) {
         if (this.N === 0) {
@@ -156,7 +167,7 @@ class JSSimulatedAnnealingEngine {
                 bitstring: tour.join(' ➔ '),
                 probability: 1.0,
                 energy: h.totalHamiltonian,
-                isValid: (h.hCity === 0 && h.hStep === 0 && h.hRegion === 0),
+                isValid: (h.missingCities === 0 && h.hStep === 0 && h.hRegion === 0),
                 tourIndices: tour,
                 cityNames: cityNames,
                 totalDistance: h.hCost,
@@ -197,10 +208,15 @@ class JSSimulatedAnnealingEngine {
 
             for (let step = 1; step <= iterPerRestart; step++) {
                 currentStep++;
-                const is2Opt = Math.random() < 0.80;
+                const moveProb = Math.random();
                 let candidateTour;
 
-                if (is2Opt) {
+                // When λ is 0 or low, allow replacement moves to sample infeasible states
+                if (this.paramLambda < 500 && moveProb > 0.70) {
+                    let i = Math.floor(Math.random() * this.N);
+                    let newCityId = Math.floor(Math.random() * this.N);
+                    candidateTour = this.applyReplacement(currentTour, i, newCityId);
+                } else if (moveProb < 0.80) {
                     let i = Math.floor(Math.random() * (this.N - 1));
                     let j = Math.floor(Math.random() * (this.N - i - 1)) + i + 1;
                     if (i === 0 && j === this.N - 1) j = this.N - 2;
@@ -240,7 +256,7 @@ class JSSimulatedAnnealingEngine {
             bitstring: globalBestTour.join(' ➔ '),
             probability: 1.0,
             energy: hFinal.totalHamiltonian,
-            isValid: (hFinal.hCity === 0 && hFinal.hStep === 0 && hFinal.hRegion === 0),
+            isValid: (hFinal.missingCities === 0 && hFinal.hStep === 0 && hFinal.hRegion === 0),
             tourIndices: globalBestTour,
             cityNames: cityNames,
             totalDistance: hFinal.hCost,
